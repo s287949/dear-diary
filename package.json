@@ -1,0 +1,116 @@
+{
+	"name": "dear-diary",
+	"displayName": "dear-diary",
+	"description": "",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.69.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:dear-diary.helloWorld",
+		"onView:new-snapshots",
+		"onView:snapshots",
+		"onView:files",
+		"onView:commmand-line-scripts",
+		"onView:dependencies"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "dear-diary.new-code-snapshot",
+				"title": "New Code Snapshot",
+				"category": "Dear Diary"
+			},
+			{
+				"command": "dear-diary.refreshSnapshots",
+				"title": "Refresh",
+				"icon": "$(refresh)"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "dear-diary",
+					"title": "Dear Diary",
+					"icon": "$(notebook)"
+				}
+			],
+			"panel": [
+				{
+				  "id": "comment",
+				  "title": "Comment",
+				  "icon": "$(comment)"
+				}
+			  ]
+		},
+		"views": {
+			"dear-diary": [
+				{
+					"type": "webview",
+					"id": "new-snapshots",
+					"name": "New Snapshot",
+					"contextualTitle": "New Snapshots"
+				},
+				{
+					"id": "snapshots",
+					"name": "Snapshots"
+				},
+				{
+					"id": "files",
+					"name": "Files"
+				},
+				{
+					"id": "command-line-scripts",
+					"name": "Command Line Scripts"
+				},
+				{
+					"id": "dependencies",
+					"name": "Dependencies"
+				}
+			],
+			"comment": [
+				{
+					"id": "add-comment",
+					"name": "Add comment"
+				}
+			]
+		},
+		"menus": {
+			"view/title": [
+			  {
+				"command": "dear-diary.refreshSnapshots",
+				"when": "view == snapshots",
+				"group": "navigation"
+			  }
+			],
+			"view/item/context": [
+			  
+			]
+		  }
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"lint": "eslint src --ext ts",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.69.0",
+		"@types/glob": "^7.2.0",
+		"@types/mocha": "^9.1.1",
+		"@types/node": "16.x",
+		"@typescript-eslint/eslint-plugin": "^5.30.0",
+		"@typescript-eslint/parser": "^5.30.0",
+		"eslint": "^8.18.0",
+		"glob": "^8.0.3",
+		"mocha": "^10.0.0",
+		"typescript": "^4.7.4",
+		"@vscode/test-electron": "^2.1.5"
+	}
+}
