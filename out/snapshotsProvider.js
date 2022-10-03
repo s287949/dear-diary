@@ -64,6 +64,7 @@ class SnapshotItem extends vscode.TreeItem {
             light: path.join(__filename, '..', '..', 'resources', 'light', 'code.svg'),
             dark: path.join(__filename, '..', '..', 'resources', 'dark', 'code.svg')
         };
+        this.contextValue = "snapshot";
     }
 }
 class PhaseItem extends vscode.TreeItem {
@@ -79,6 +80,7 @@ class PhaseItem extends vscode.TreeItem {
             light: path.join(__filename, '..', '..', 'resources', 'light', 'layers.svg'),
             dark: path.join(__filename, '..', '..', 'resources', 'dark', 'layers.svg')
         };
+        this.contextValue = "phase";
         this.description = (phaseno + 1).toString();
     }
 }

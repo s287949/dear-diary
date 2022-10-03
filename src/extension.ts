@@ -1,7 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { newCodeSnapshot } from './multiStepInput';
+import { newCodeSnapshot } from './multiStepInputNewSnapshot';
+import { newCodePhase } from './multiStepInputNewPhase';
 import { DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
@@ -63,10 +64,37 @@ export function activate(context: vscode.ExtensionContext) {
 
 				//Hard creating the snapshot: future version the phase should be pushed in the phases array of Snapshot
 				let deps = getDepsInPackageJson(rootPath);
-				console.log(deps);
 				snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", files, deps)], "code"));
 
 				context.globalState.update("snaps", snaps);
+				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+			}
+		}
+		else {
+			vscode.window.showErrorMessage("Error: Editor not present");
+		}
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async () => {
+		const qis = await newCodePhase(context);
+
+		const editor = vscode.window.activeTextEditor;
+		let code;
+		if (editor) {
+			const document = editor.document;
+			const selection = editor.selection;
+
+			code = document.getText(selection);
+			let file = document.fileName.split('\\').at(-1);
+			let files = Array(file!);
+			
+
+			if (!code) {
+				vscode.window.showErrorMessage("Error: No code selected for the new phase");
+			}
+			else {
+				let deps = getDepsInPackageJson(rootPath);
+				snapshotsProvider.addPhase(new Phase(qis.phase, code as string, "", files, deps));
+
 				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 			}
 		}

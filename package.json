@@ -29,6 +29,11 @@
 				"command": "dear-diary.refreshSnapshots",
 				"title": "Refresh",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "dear-diary.newPhase",
+				"title": "Add new Phase",
+				"icon": "$(add)"
 			}
 		],
 		"viewsContainers": {
@@ -88,7 +93,11 @@
 			  }
 			],
 			"view/item/context": [
-			  
+				{
+				  "command": "dear-diary.newPhase",
+				  "when": "view == snapshots && viewItem == snapshot",
+				  "group": "inline"
+				}
 			]
 		  }
 	},

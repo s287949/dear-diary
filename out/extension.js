@@ -4,7 +4,8 @@ exports.deactivate = exports.activate = void 0;
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require("vscode");
-const multiStepInput_1 = require("./multiStepInput");
+const multiStepInputNewSnapshot_1 = require("./multiStepInputNewSnapshot");
+const multiStepInputNewPhase_1 = require("./multiStepInputNewPhase");
 const dependenciesProvider_1 = require("./dependenciesProvider");
 const snapshotsProvider_1 = require("./snapshotsProvider");
 const filesProvider_1 = require("./filesProvider");
@@ -30,7 +31,7 @@ function activate(context) {
     const provider = new NewSnapshotsViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, provider));
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async () => {
-        const qis = await (0, multiStepInput_1.newCodeSnapshot)(context);
+        const qis = await (0, multiStepInputNewSnapshot_1.newCodeSnapshot)(context);
         //vscode.commands.executeCommand("comment.focus");
         const editor = vscode.window.activeTextEditor;
         let code;
@@ -52,9 +53,31 @@ function activate(context) {
                 }
                 //Hard creating the snapshot: future version the phase should be pushed in the phases array of Snapshot
                 let deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
-                console.log(deps);
                 snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", files, deps)], "code"));
                 context.globalState.update("snaps", snaps);
+                vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+            }
+        }
+        else {
+            vscode.window.showErrorMessage("Error: Editor not present");
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async () => {
+        const qis = await (0, multiStepInputNewPhase_1.newCodePhase)(context);
+        const editor = vscode.window.activeTextEditor;
+        let code;
+        if (editor) {
+            const document = editor.document;
+            const selection = editor.selection;
+            code = document.getText(selection);
+            let file = document.fileName.split('\\').at(-1);
+            let files = Array(file);
+            if (!code) {
+                vscode.window.showErrorMessage("Error: No code selected for the new phase");
+            }
+            else {
+                let deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                snapshotsProvider.addPhase(new Snapshot_1.Phase(qis.phase, code, "", files, deps));
                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
             }
         }
