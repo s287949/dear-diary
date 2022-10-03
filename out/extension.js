@@ -14,6 +14,7 @@ const dependenciesCatcher_1 = require("./dependenciesCatcher");
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 function activate(context) {
+    let snaps = context.globalState.get("snaps");
     //Show dependencies in the Dependencies view
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -46,7 +47,7 @@ function activate(context) {
             }
             else {
                 context.globalState.update("snaps", []);
-                let snaps = context.globalState.get("snaps");
+                snaps = context.globalState.get("snaps");
                 if (!snaps) {
                     context.globalState.update("snaps", []);
                     snaps = [];
@@ -62,7 +63,7 @@ function activate(context) {
             vscode.window.showErrorMessage("Error: Editor not present");
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async () => {
+    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node) => {
         const qis = await (0, multiStepInputNewPhase_1.newCodePhase)(context);
         const editor = vscode.window.activeTextEditor;
         let code;
@@ -77,7 +78,8 @@ function activate(context) {
             }
             else {
                 let deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
-                snapshotsProvider.addPhase(new Snapshot_1.Phase(qis.phase, code, "", files, deps));
+                node.ref.phases.push(new Snapshot_1.Phase(qis.phase, code, "", files, deps));
+                context.globalState.update("snaps", snaps);
                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
             }
         }

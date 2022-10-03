@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SnapshotsProvider = void 0;
+exports.SnapshotItem = exports.SnapshotsProvider = void 0;
 const vscode = require("vscode");
 const path = require("path");
 class SnapshotsProvider {
@@ -19,6 +19,9 @@ class SnapshotsProvider {
         if (element instanceof SnapshotItem) {
             return Promise.resolve(this.getPhases(element.phases));
         }
+        else if (element instanceof PhaseItem) {
+            return Promise.resolve([]);
+        }
         else {
             return Promise.resolve(this.getSnapshots(this.context.globalState.get("snaps")));
         }
@@ -28,7 +31,7 @@ class SnapshotsProvider {
             return [];
         }
         const toSnap = (snap) => {
-            return new SnapshotItem(snap.title, snap.phases, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
+            return new SnapshotItem(snap, snap.title, snap.phases, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
         };
         const snapshots = snaps
             ? snaps.map(snap => toSnap(snap))
@@ -54,8 +57,9 @@ class SnapshotsProvider {
 }
 exports.SnapshotsProvider = SnapshotsProvider;
 class SnapshotItem extends vscode.TreeItem {
-    constructor(title, phases, type, collapsibleState) {
+    constructor(ref, title, phases, type, collapsibleState) {
         super(title, collapsibleState);
+        this.ref = ref;
         this.title = title;
         this.phases = phases;
         this.type = type;
@@ -67,6 +71,7 @@ class SnapshotItem extends vscode.TreeItem {
         this.contextValue = "snapshot";
     }
 }
+exports.SnapshotItem = SnapshotItem;
 class PhaseItem extends vscode.TreeItem {
     constructor(title, code, comment, phaseno, collapsibleState, command) {
         super(title, collapsibleState);

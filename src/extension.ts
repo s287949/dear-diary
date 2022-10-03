@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { newCodeSnapshot } from './multiStepInputNewSnapshot';
 import { newCodePhase } from './multiStepInputNewPhase';
 import { DepNodeProvider } from './dependenciesProvider';
-import { SnapshotsProvider } from './snapshotsProvider';
+import { SnapshotsProvider, SnapshotItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
 import { Snapshot, Phase } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+	let snaps: Array<Snapshot> | undefined = context.globalState.get("snaps");
 	//Show dependencies in the Dependencies view
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -56,7 +57,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			else {
 				context.globalState.update("snaps", []);
-				let snaps: Array<Snapshot> | undefined = context.globalState.get("snaps");
+				snaps = context.globalState.get("snaps");
 				if (!snaps) {
 					context.globalState.update("snaps", []);
 					snaps = [];
@@ -74,7 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showErrorMessage("Error: Editor not present");
 		}
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async () => {
+	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node: SnapshotItem) => {
 		const qis = await newCodePhase(context);
 
 		const editor = vscode.window.activeTextEditor;
@@ -93,8 +94,9 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			else {
 				let deps = getDepsInPackageJson(rootPath);
-				snapshotsProvider.addPhase(new Phase(qis.phase, code as string, "", files, deps));
+				node.ref.phases.push(new Phase(qis.phase, code as string, "", files, deps));
 
+				context.globalState.update("snaps", snaps);
 				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 			}
 		}

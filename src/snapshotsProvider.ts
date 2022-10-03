@@ -22,7 +22,11 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 			return Promise.resolve(
 				this.getPhases(element.phases)
 			);
-		} else {
+		} 
+		else if(element instanceof PhaseItem) {
+			return Promise.resolve([]);
+		}
+		else {
 			return Promise.resolve(
 				this.getSnapshots(this.context.globalState.get("snaps"))
 			);
@@ -35,7 +39,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		}
 		
 		const toSnap = (snap: Snapshot): SnapshotItem => {
-			return new SnapshotItem(snap.title, snap.phases, snap.type,vscode.TreeItemCollapsibleState.Collapsed);
+			return new SnapshotItem(snap, snap.title, snap.phases, snap.type,vscode.TreeItemCollapsibleState.Collapsed);
 		};
 
 		const snapshots = snaps
@@ -66,8 +70,9 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 	}
 }
 
-class SnapshotItem extends vscode.TreeItem {
+export class SnapshotItem extends vscode.TreeItem {
 	constructor(
+		public ref: Snapshot,
 		public readonly title: string,
 		public phases : Phase[],
 		private type: string,
@@ -81,6 +86,8 @@ class SnapshotItem extends vscode.TreeItem {
 		light: path.join(__filename, '..', '..', 'resources', 'light', 'code.svg'),
 		dark: path.join(__filename, '..', '..', 'resources', 'dark', 'code.svg')
 	};
+
+	
 }
 
 class PhaseItem extends vscode.TreeItem {
