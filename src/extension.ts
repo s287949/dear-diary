@@ -6,9 +6,12 @@ import { newCodePhase } from './multiStepInputNewPhase';
 import { DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider, SnapshotItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
+import { ScriptsProvider } from './scriptsProvider';
 import { Snapshot, Phase } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
 import { fileURLToPath } from 'url';
+
+let terminalData = {};
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -27,6 +30,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
 		const nodeFilesProvider = new FilesNodeProvider(phase.files!);
 		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
+		const nodeScriptsProvider = new ScriptsProvider(phase.scripts!);
+		vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
 	});
 
 
@@ -50,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
 			code = document.getText(selection);
 			let file = document.fileName.split('\\').at(-1);
 			let files = Array(file!);
-			
+
 
 			if (!code) {
 				vscode.window.showErrorMessage("Error: No code selected for the snapshot");
@@ -63,10 +68,25 @@ export function activate(context: vscode.ExtensionContext) {
 					snaps = [];
 				}
 
-				//Hard creating the snapshot: future version the phase should be pushed in the phases array of Snapshot
+				//get dependencies
 				let deps = getDepsInPackageJson(rootPath);
-				snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", files, deps)], "code"));
-
+				
+				//get command line scripts
+				let scripts:string[] = [];
+				const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
+				if (terminals.length <= 0) {
+					vscode.window.showWarningMessage('No terminals found, cannot run copy');
+					return;
+				}
+				runClipboardMode();
+				vscode.env.clipboard.readText().then((text)=>{
+					scripts.push(text); 
+				});
+				
+				//creating snapshot and adding it to the array of snapshots
+				snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, files, deps)], "code"));
+				
+				//updating the system array of snapshots
 				context.globalState.update("snaps", snaps);
 				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 			}
@@ -87,15 +107,30 @@ export function activate(context: vscode.ExtensionContext) {
 			code = document.getText(selection);
 			let file = document.fileName.split('\\').at(-1);
 			let files = Array(file!);
-			
+
 
 			if (!code) {
 				vscode.window.showErrorMessage("Error: No code selected for the new phase");
 			}
 			else {
 				let deps = getDepsInPackageJson(rootPath);
-				node.ref.phases.push(new Phase(qis.phase, code as string, "", files, deps));
 
+				//get command line scripts
+				let scripts:string[] = [];
+				const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
+				if (terminals.length <= 0) {
+					vscode.window.showWarningMessage('No terminals found, cannot run copy');
+					return;
+				}
+				runClipboardMode();
+				vscode.env.clipboard.readText().then((text)=>{
+					scripts.push(text); 
+				});
+
+				//create new phase and push it to the relative snapshot
+				node.ref.phases.push(new Phase(qis.phase, code as string, "", scripts, files, deps));
+
+				//update system snapshots array
 				context.globalState.update("snaps", snaps);
 				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 			}
@@ -105,8 +140,40 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}));
 
+	vscode.window.terminals.forEach(t => {
+		registerTerminalForCapture(t);
+	});
+
+	vscode.window.onDidOpenTerminal(t => {
+		registerTerminalForCapture(t);
+	});
+
 }
 
+function registerTerminalForCapture(terminal: vscode.Terminal) {
+	terminal.processId.then(terminalId => {
+		(<any>terminalData)[terminalId!] = "";
+		(<any>terminal).onDidWriteData((data: any) => {
+			// TODO:
+			//   - Need to remove (or handle) backspace
+			//   - not sure what to do about carriage return???
+			//   - might have some odd output
+			(<any>terminalData)[terminalId!] += data;
+		});
+	});
+}
+
+function runClipboardMode() {
+	vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
+		vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
+			vscode.commands.executeCommand('workbench.action.terminal.clearSelection');/*.then(() => {
+				vscode.commands.executeCommand('workbench.action.files.newUntitledFile').then(() => {
+					vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+				});
+			});*/
+		});
+	});
+}
 
 class NewSnapshotsViewProvider implements vscode.WebviewViewProvider {
 

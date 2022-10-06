@@ -14,14 +14,16 @@ export class Phase {
 	title: string;
 	code: string;
 	comment: string;
+	scripts: string[];
 	files: string[];
 	dependencies: Dependency[];
 
-	public constructor(title: string, code: string, comment: string, files:string[], dependencies: Dependency[]) {
+	public constructor(title: string, code: string, comment: string, scripts:string[], files:string[], dependencies: Dependency[]) {
 		this.title = title;
 		this.code = code;
-		this.comment=comment;
-		this.files=files;
+		this.comment = comment;
+		this.scripts = scripts;
+		this.files = files;
 		this.dependencies=dependencies;
 	}
 }

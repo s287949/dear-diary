@@ -10,10 +10,11 @@ class Snapshot {
 }
 exports.Snapshot = Snapshot;
 class Phase {
-    constructor(title, code, comment, files, dependencies) {
+    constructor(title, code, comment, scripts, files, dependencies) {
         this.title = title;
         this.code = code;
         this.comment = comment;
+        this.scripts = scripts;
         this.files = files;
         this.dependencies = dependencies;
     }
