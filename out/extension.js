@@ -12,7 +12,18 @@ const filesProvider_1 = require("./filesProvider");
 const scriptsProvider_1 = require("./scriptsProvider");
 const Snapshot_1 = require("./Snapshot");
 const dependenciesCatcher_1 = require("./dependenciesCatcher");
+const fs = require("fs");
+const path = require("path");
+/*
+TODO:
+- when clicking script open file with the relative command and output
+- having the entire file tree in the files tab
+- adding comments and saving them
+
+*/
 let terminalData = {};
+let maxDirsPerSubtree = undefined;
+let maxFilesInSubtree = undefined;
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 function activate(context) {
@@ -37,15 +48,21 @@ function activate(context) {
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, provider));
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async () => {
         const qis = await (0, multiStepInputNewSnapshot_1.newCodeSnapshot)(context);
-        //vscode.commands.executeCommand("comment.focus");
+        let fileTree = [];
         const editor = vscode.window.activeTextEditor;
         let code;
         if (editor) {
             const document = editor.document;
             const selection = editor.selection;
             code = document.getText(selection);
-            let file = document.fileName.split('\\').at(-1);
-            let files = Array(file);
+            let fileName = document.fileName;
+            if (rootPath) {
+                fileTree = generateFileTree(rootPath, 0, false, fileName);
+            }
+            else {
+                vscode.window.showErrorMessage("Error: File tree could not be captured");
+                return;
+            }
             if (!code) {
                 vscode.window.showErrorMessage("Error: No code selected for the snapshot");
             }
@@ -70,7 +87,7 @@ function activate(context) {
                     scripts.push(text);
                 });
                 //creating snapshot and adding it to the array of snapshots
-                snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, files, deps)], "code"));
+                snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps)], "code"));
                 //updating the system array of snapshots
                 context.globalState.update("snaps", snaps);
                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
@@ -82,14 +99,21 @@ function activate(context) {
     }));
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node) => {
         const qis = await (0, multiStepInputNewPhase_1.newCodePhase)(context);
+        let fileTree = [];
         const editor = vscode.window.activeTextEditor;
         let code;
         if (editor) {
             const document = editor.document;
             const selection = editor.selection;
             code = document.getText(selection);
-            let file = document.fileName.split('\\').at(-1);
-            let files = Array(file);
+            let fileName = document.fileName;
+            if (rootPath) {
+                fileTree = generateFileTree(rootPath, 0, false, fileName);
+            }
+            else {
+                vscode.window.showErrorMessage("Error: File tree could not be captured");
+                return;
+            }
             if (!code) {
                 vscode.window.showErrorMessage("Error: No code selected for the new phase");
             }
@@ -107,7 +131,7 @@ function activate(context) {
                     scripts.push(text);
                 });
                 //create new phase and push it to the relative snapshot
-                node.ref.phases.push(new Snapshot_1.Phase(qis.phase, code, "", scripts, files, deps));
+                node.ref.phases.push(new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps));
                 //update system snapshots array
                 context.globalState.update("snaps", snaps);
                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
@@ -125,6 +149,43 @@ function activate(context) {
     });
 }
 exports.activate = activate;
+function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath) {
+    let output = [];
+    // return if path to target is not valid
+    if (!fs.existsSync(selectedRootPath)) {
+        return [];
+    }
+    // order by directory > file
+    const beforeSortFiles = fs.readdirSync(selectedRootPath);
+    let dirsArray = [];
+    let filesArray = [];
+    beforeSortFiles.forEach((el) => {
+        const fullPath = path.join(selectedRootPath, el.toString());
+        if (fs.statSync(fullPath).isDirectory()) {
+            dirsArray.push(el);
+        }
+        else {
+            filesArray.push(el);
+        }
+    });
+    const pathsAndFilesArray = [...dirsArray, ...filesArray];
+    pathsAndFilesArray.forEach((el) => {
+        const elText = el.toString();
+        const fullPath = path.join(selectedRootPath, el.toString());
+        const lastItem = pathsAndFilesArray.indexOf(el) === pathsAndFilesArray.length - 1;
+        const isDirectory = fs.statSync(fullPath).isDirectory();
+        const isLastDirInTree = isDirectory && lastItem;
+        let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, []);
+        if (isDirectory) {
+            fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath);
+        }
+        else if (fullPath === originalFilePath) {
+            fsInst.fileSnapshoted = true;
+        }
+        output.push(fsInst);
+    });
+    return output;
+}
 function registerTerminalForCapture(terminal) {
     terminal.processId.then(terminalId => {
         terminalData[terminalId] = "";

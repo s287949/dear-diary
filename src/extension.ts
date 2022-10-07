@@ -7,11 +7,24 @@ import { DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider, SnapshotItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
 import { ScriptsProvider } from './scriptsProvider';
-import { Snapshot, Phase } from './Snapshot';
+import { Snapshot, Phase, FSInstance } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
-import { fileURLToPath } from 'url';
+import * as fs from 'fs';
+import * as path from 'path';
+
+
+/*
+TODO:
+- when clicking script open file with the relative command and output
+- having the entire file tree in the files tab
+- adding comments and saving them
+
+*/
 
 let terminalData = {};
+
+let maxDirsPerSubtree: number | undefined = undefined;
+let maxFilesInSubtree: number | undefined = undefined;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -43,8 +56,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async () => {
 		const qis = await newCodeSnapshot(context);
+		let fileTree = [];
 
-		//vscode.commands.executeCommand("comment.focus");
 
 		const editor = vscode.window.activeTextEditor;
 		let code;
@@ -53,9 +66,15 @@ export function activate(context: vscode.ExtensionContext) {
 			const selection = editor.selection;
 
 			code = document.getText(selection);
-			let file = document.fileName.split('\\').at(-1);
-			let files = Array(file!);
+			let fileName = document.fileName;
 
+			if (rootPath) {
+				fileTree = generateFileTree(rootPath, 0, false, fileName);
+			}
+			else {
+				vscode.window.showErrorMessage("Error: File tree could not be captured");
+				return;
+			}
 
 			if (!code) {
 				vscode.window.showErrorMessage("Error: No code selected for the snapshot");
@@ -70,22 +89,22 @@ export function activate(context: vscode.ExtensionContext) {
 
 				//get dependencies
 				let deps = getDepsInPackageJson(rootPath);
-				
+
 				//get command line scripts
-				let scripts:string[] = [];
+				let scripts: string[] = [];
 				const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 				if (terminals.length <= 0) {
 					vscode.window.showWarningMessage('No terminals found, cannot run copy');
 					return;
 				}
 				runClipboardMode();
-				vscode.env.clipboard.readText().then((text)=>{
-					scripts.push(text); 
+				vscode.env.clipboard.readText().then((text) => {
+					scripts.push(text);
 				});
-				
+
 				//creating snapshot and adding it to the array of snapshots
-				snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, files, deps)], "code"));
-				
+				snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
+
 				//updating the system array of snapshots
 				context.globalState.update("snaps", snaps);
 				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
@@ -97,6 +116,8 @@ export function activate(context: vscode.ExtensionContext) {
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node: SnapshotItem) => {
 		const qis = await newCodePhase(context);
+		let fileTree = [];
+
 
 		const editor = vscode.window.activeTextEditor;
 		let code;
@@ -105,9 +126,15 @@ export function activate(context: vscode.ExtensionContext) {
 			const selection = editor.selection;
 
 			code = document.getText(selection);
-			let file = document.fileName.split('\\').at(-1);
-			let files = Array(file!);
+			let fileName = document.fileName;
 
+			if (rootPath) {
+				fileTree = generateFileTree(rootPath, 0, false, fileName);
+			}
+			else {
+				vscode.window.showErrorMessage("Error: File tree could not be captured");
+				return;
+			}
 
 			if (!code) {
 				vscode.window.showErrorMessage("Error: No code selected for the new phase");
@@ -116,19 +143,19 @@ export function activate(context: vscode.ExtensionContext) {
 				let deps = getDepsInPackageJson(rootPath);
 
 				//get command line scripts
-				let scripts:string[] = [];
+				let scripts: string[] = [];
 				const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 				if (terminals.length <= 0) {
 					vscode.window.showWarningMessage('No terminals found, cannot run copy');
 					return;
 				}
 				runClipboardMode();
-				vscode.env.clipboard.readText().then((text)=>{
-					scripts.push(text); 
+				vscode.env.clipboard.readText().then((text) => {
+					scripts.push(text);
 				});
 
 				//create new phase and push it to the relative snapshot
-				node.ref.phases.push(new Phase(qis.phase, code as string, "", scripts, files, deps));
+				node.ref.phases.push(new Phase(qis.phase, code as string, "", scripts, fileTree, deps));
 
 				//update system snapshots array
 				context.globalState.update("snaps", snaps);
@@ -148,6 +175,51 @@ export function activate(context: vscode.ExtensionContext) {
 		registerTerminalForCapture(t);
 	});
 
+}
+
+function generateFileTree(selectedRootPath: string, level: number, parentDirIsLast = false, originalFilePath: string) {
+	let output: FSInstance[] = [];
+
+	// return if path to target is not valid
+	if (!fs.existsSync(selectedRootPath)) {
+		return [];
+	}
+
+	// order by directory > file
+	const beforeSortFiles = fs.readdirSync(selectedRootPath);
+	let dirsArray: string[] = [];
+
+	let filesArray: string[] = [];
+	beforeSortFiles.forEach((el) => {
+		const fullPath = path.join(selectedRootPath, el.toString());
+		if (fs.statSync(fullPath).isDirectory()) {
+			dirsArray.push(el);
+		} else {
+			filesArray.push(el);
+		}
+	});
+
+	const pathsAndFilesArray = [...dirsArray, ...filesArray];
+
+	pathsAndFilesArray.forEach((el) => {
+		const elText = el.toString();
+		const fullPath = path.join(selectedRootPath, el.toString());
+		const lastItem = pathsAndFilesArray.indexOf(el) === pathsAndFilesArray.length - 1;
+		const isDirectory = fs.statSync(fullPath).isDirectory();
+		const isLastDirInTree = isDirectory && lastItem;
+
+		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, []);
+
+		if (isDirectory) {
+			fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath);
+		}
+		else if (fullPath === originalFilePath) {
+			fsInst.fileSnapshoted = true;
+		}
+
+		output.push(fsInst);
+	});
+	return output;
 }
 
 function registerTerminalForCapture(terminal: vscode.Terminal) {

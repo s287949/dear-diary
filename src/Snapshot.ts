@@ -15,10 +15,10 @@ export class Phase {
 	code: string;
 	comment: string;
 	scripts: string[];
-	files: string[];
+	files: FSInstance[];
 	dependencies: Dependency[];
 
-	public constructor(title: string, code: string, comment: string, scripts:string[], files:string[], dependencies: Dependency[]) {
+	public constructor(title: string, code: string, comment: string, scripts:string[], files:FSInstance[], dependencies: Dependency[]) {
 		this.title = title;
 		this.code = code;
 		this.comment = comment;
@@ -35,5 +35,19 @@ export class Dependency{
 	public constructor(module: string, version:string){
 		this.module=module;
 		this.version=version;
+	}
+}
+
+export class FSInstance{
+	name: string;
+	type: string;
+	fileSnapshoted: boolean;
+	subInstances: FSInstance[];
+
+	public constructor(name:string, type: string, fileSnapped: boolean, subI: FSInstance[]){
+		this.name = name;
+		this.type = type;
+		this.fileSnapshoted = fileSnapped;
+		this.subInstances = subI;
 	}
 }
