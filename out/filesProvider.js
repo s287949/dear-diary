@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileItem = exports.FilesNodeProvider = void 0;
 const vscode = require("vscode");
-const path = require("path");
 class FilesNodeProvider {
     constructor(files) {
         this.files = files;
@@ -20,33 +19,30 @@ class FilesNodeProvider {
             return Promise.resolve([]);
         }
         else if (!element) {
-            return Promise.resolve(this.getFiles());
+            return Promise.resolve(this.getFiles(this.files));
         }
         else {
-            return Promise.resolve([]);
+            return Promise.resolve(this.getFiles(element.subfiles));
         }
     }
     /**
      * Gets the dependencies in input and trasform them in FileItem in order to be dispalyed
      */
-    getFiles() {
+    getFiles(f) {
         const toFile = (file) => {
-            return new FileItem(file, vscode.TreeItemCollapsibleState.None);
+            return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
         };
-        const ds = this.files.map(file => toFile(file));
-        return ds;
+        const fs = f ? f.map(file => toFile(file)) : [];
+        return fs;
     }
 }
 exports.FilesNodeProvider = FilesNodeProvider;
 class FileItem extends vscode.TreeItem {
-    constructor(label, collapsibleState) {
+    constructor(label, subfiles, collapsibleState) {
         super(label, collapsibleState);
         this.label = label;
+        this.subfiles = subfiles;
         this.collapsibleState = collapsibleState;
-        this.iconPath = {
-            light: path.join(__filename, '..', '..', 'resources', 'light', 'file.svg'),
-            dark: path.join(__filename, '..', '..', 'resources', 'dark', 'file.svg')
-        };
         this.contextValue = 'file';
     }
 }

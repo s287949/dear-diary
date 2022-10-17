@@ -34,6 +34,11 @@
 				"command": "dear-diary.newPhase",
 				"title": "Add new Phase",
 				"icon": "$(add)"
+			},
+			{
+				"command": "dear-diary.newComment",
+				"title": "Create comment",
+				"enablement": "!commentIsEmpty"
 			}
 		],
 		"viewsContainers": {
@@ -97,6 +102,19 @@
 				  "command": "dear-diary.newPhase",
 				  "when": "view == snapshots && viewItem == snapshot",
 				  "group": "inline"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "dear-diary.newComment",
+					"when": "false"
+				}
+			],
+			"comments/commentThread/context": [
+				{
+					"command": "dear-diary.newComment",
+					"group": "inline",
+					"when": "commentController == comment-sample && commentThreadIsEmpty"
 				}
 			]
 		  }

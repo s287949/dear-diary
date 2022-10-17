@@ -14,11 +14,11 @@ export class Phase {
 	title: string;
 	code: string;
 	comment: string;
-	scripts: string[];
+	scripts: Script[];
 	files: FSInstance[];
 	dependencies: Dependency[];
 
-	public constructor(title: string, code: string, comment: string, scripts:string[], files:FSInstance[], dependencies: Dependency[]) {
+	public constructor(title: string, code: string, comment: string, scripts:Script[], files:FSInstance[], dependencies: Dependency[]) {
 		this.title = title;
 		this.code = code;
 		this.comment = comment;
@@ -49,5 +49,15 @@ export class FSInstance{
 		this.type = type;
 		this.fileSnapshoted = fileSnapped;
 		this.subInstances = subI;
+	}
+}
+
+export class Script{
+	script: string;
+	output: string;
+
+	public constructor(script: string, output:string){
+		this.script=script;
+		this.output=output;
 	}
 }

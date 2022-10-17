@@ -7,7 +7,7 @@ import { DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider, SnapshotItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
 import { ScriptsProvider } from './scriptsProvider';
-import { Snapshot, Phase, FSInstance } from './Snapshot';
+import { Snapshot, Phase, FSInstance, Script } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,16 +15,29 @@ import * as path from 'path';
 
 /*
 TODO:
-- when clicking script open file with the relative command and output
-- having the entire file tree in the files tab
 - adding comments and saving them
 
 */
 
 let terminalData = {};
 
-let maxDirsPerSubtree: number | undefined = undefined;
-let maxFilesInSubtree: number | undefined = undefined;
+let commentId = 1;
+
+class NoteComment implements vscode.Comment {
+	id: number;
+	label: string | undefined;
+	savedBody: string | vscode.MarkdownString; // for the Cancel button
+	constructor(
+		public body: string | vscode.MarkdownString,
+		public mode: vscode.CommentMode,
+		public author: vscode.CommentAuthorInformation,
+		public parent?: vscode.CommentThread,
+		public contextValue?: string
+	) {
+		this.id = ++commentId;
+		this.savedBody = this.body;
+	}
+}
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -34,137 +47,224 @@ export function activate(context: vscode.ExtensionContext) {
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
 
-	//Providing Snapshots to the relative view
+	// A `CommentController` is able to provide comments for documents.
+	const commentController = vscode.comments.createCommentController('diary-comment', 'Diary snapshot comment');
+	context.subscriptions.push(commentController);
+
+	// A `CommentingRangeProvider` controls where gutter decorations that allow adding comments are shown
+	/*commentController.commentingRangeProvider = {
+		provideCommentingRanges: (document: vscode.TextDocument, token: vscode.CancellationToken) => {
+			const lineCount = document.lineCount;
+			return [new vscode.Range(0, 0, lineCount - 1, 0)];
+		}
+	};*/
+
+	//Providing Snapshots to the related view
 	const snapshotsProvider = new SnapshotsProvider(context);
 	vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
 	vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
+	//Open file showing code snapshotted
 	vscode.commands.registerCommand('extension.openPhase', phase => {
 		const nodeDependenciesProvider = new DepNodeProvider(phase.dependencies!);
 		vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
-		const nodeFilesProvider = new FilesNodeProvider(phase.files!);
-		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
 		const nodeScriptsProvider = new ScriptsProvider(phase.scripts!);
 		vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
+		const nodeFilesProvider = new FilesNodeProvider(phase.files!);
+		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
+		var setting: vscode.Uri = vscode.Uri.parse(phase.title ? "untitled:" + "C:\\" + phase.title + ".txt" : "untitled:" + "C:\phase code.txt");
+		vscode.workspace.onDidOpenTextDocument((a) => {
+			let fn = phase.title ? "C:\\" + phase.title + ".txt" : "C:\phase code.txt";
+			if (a.fileName === fn) {
+				vscode.window.showTextDocument(a, 1, false).then(e => {
+					e.edit(edit => {
+						edit.insert(new vscode.Position(0, 0), phase.code);
+					});
+				});
+			}
+
+		});
+		vscode.workspace.openTextDocument(setting).then((a: vscode.TextDocument) => {
+		}, (error: any) => {
+			console.error(error);
+			debugger;
+		});
 	});
+	//Open file showing the command line script and the output
+	vscode.commands.registerCommand('extension.openScript', script => {
+		var setting: vscode.Uri = vscode.Uri.parse("untitled:" + "C:\\" + script.script + ".txt");
+		vscode.workspace.onDidOpenTextDocument((a) => {
+			if (a.fileName === "C:\\" + script.script + ".txt") {
+				vscode.window.showTextDocument(a, 1, false).then(e => {
+					e.edit(edit => {
+						edit.insert(new vscode.Position(0, 0), script.output);
+					});
+				});
+			}
 
-
+		});
+		vscode.workspace.openTextDocument(setting).then((a: vscode.TextDocument) => {
+			/*vscode.window.showTextDocument(a, 1, false).then(e => {
+				e.edit(edit => {
+					edit.insert(new vscode.Position(0, 0), script.output);
+				});
+			});*/
+		}, (error: any) => {
+			console.error(error);
+			debugger;
+		});
+	});
 
 	//New code snapshot command impelementation
 	const provider = new NewSnapshotsViewProvider(context.extensionUri);
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, provider));
+	context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, provider));
 
 	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async () => {
-		const qis = await newCodeSnapshot(context);
-		let fileTree = [];
+		await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
+			vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
+				vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
+					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
+						const qis = await newCodeSnapshot(context);
+						let fileTree = [];
 
+						const editor = vscode.window.activeTextEditor;
+						let code;
+						if (editor) {
+							const document = editor.document;
+							const selection = editor.selection;
 
-		const editor = vscode.window.activeTextEditor;
-		let code;
-		if (editor) {
-			const document = editor.document;
-			const selection = editor.selection;
+							code = document.getText(selection);
+							let range = new vscode.Range(editor.selection.start, editor.selection.end);
+							let fileName = document.fileName;
 
-			code = document.getText(selection);
-			let fileName = document.fileName;
+							if (rootPath) {
+								fileTree = generateFileTree(rootPath, 0, false, fileName);
+							}
+							else {
+								vscode.window.showErrorMessage("Error: File tree could not be captured");
+								return;
+							}
 
-			if (rootPath) {
-				fileTree = generateFileTree(rootPath, 0, false, fileName);
-			}
-			else {
-				vscode.window.showErrorMessage("Error: File tree could not be captured");
-				return;
-			}
+							if (!code) {
+								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
+							}
+							else {
+								context.globalState.update("snaps", []);
+								snaps = context.globalState.get("snaps");
+								if (!snaps) {
+									context.globalState.update("snaps", []);
+									snaps = [];
+								}
 
-			if (!code) {
-				vscode.window.showErrorMessage("Error: No code selected for the snapshot");
-			}
-			else {
-				context.globalState.update("snaps", []);
-				snaps = context.globalState.get("snaps");
-				if (!snaps) {
-					context.globalState.update("snaps", []);
-					snaps = [];
-				}
+								//get dependencies
+								let deps = getDepsInPackageJson(rootPath);
 
-				//get dependencies
-				let deps = getDepsInPackageJson(rootPath);
+								//get command line scripts
+								let scripts: Script[] = [];
+								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
+								if (terminals.length <= 0) {
+									vscode.window.showWarningMessage('No terminals found, cannot run copy');
+									return;
+								}
+								vscode.env.clipboard.readText().then((text) => {
+									let scrts = text.split(new RegExp(/PS C:\\.*>/));
+									scrts.shift();
+									scrts.forEach((i) => {
+										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
 
-				//get command line scripts
-				let scripts: string[] = [];
-				const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
-				if (terminals.length <= 0) {
-					vscode.window.showWarningMessage('No terminals found, cannot run copy');
-					return;
-				}
-				runClipboardMode();
-				vscode.env.clipboard.readText().then((text) => {
-					scripts.push(text);
+										if (s && s.trim() !== '') {
+											scripts.push(new Script(s.split("\r\n")[0], s));
+										}
+									});
+								});
+
+								let commentThread = commentController.createCommentThread(editor.document.uri, range, []);
+
+								//creating snapshot and adding it to the array of snapshots
+								snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
+
+								//updating the system array of snapshots
+								context.globalState.update("snaps", snaps);
+								vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+							}
+						}
+						else {
+							vscode.window.showErrorMessage("Error: Editor not present");
+						}
+					});
 				});
-
-				//creating snapshot and adding it to the array of snapshots
-				snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
-
-				//updating the system array of snapshots
-				context.globalState.update("snaps", snaps);
-				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
-			}
-		}
-		else {
-			vscode.window.showErrorMessage("Error: Editor not present");
-		}
+			});
+		});
 	}));
+
 	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node: SnapshotItem) => {
-		const qis = await newCodePhase(context);
-		let fileTree = [];
+		await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
+			vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
+				vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
+					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
+						const qis = await newCodePhase(context);
+						let fileTree = [];
 
 
-		const editor = vscode.window.activeTextEditor;
-		let code;
-		if (editor) {
-			const document = editor.document;
-			const selection = editor.selection;
+						const editor = vscode.window.activeTextEditor;
+						let code;
+						if (editor) {
+							const document = editor.document;
+							const selection = editor.selection;
 
-			code = document.getText(selection);
-			let fileName = document.fileName;
+							code = document.getText(selection);
+							let fileName = document.fileName;
 
-			if (rootPath) {
-				fileTree = generateFileTree(rootPath, 0, false, fileName);
-			}
-			else {
-				vscode.window.showErrorMessage("Error: File tree could not be captured");
-				return;
-			}
+							if (rootPath) {
+								fileTree = generateFileTree(rootPath, 0, false, fileName);
+							}
+							else {
+								vscode.window.showErrorMessage("Error: File tree could not be captured");
+								return;
+							}
 
-			if (!code) {
-				vscode.window.showErrorMessage("Error: No code selected for the new phase");
-			}
-			else {
-				let deps = getDepsInPackageJson(rootPath);
+							if (!code) {
+								vscode.window.showErrorMessage("Error: No code selected for the new phase");
+							}
+							else {
+								let deps = getDepsInPackageJson(rootPath);
 
-				//get command line scripts
-				let scripts: string[] = [];
-				const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
-				if (terminals.length <= 0) {
-					vscode.window.showWarningMessage('No terminals found, cannot run copy');
-					return;
-				}
-				runClipboardMode();
-				vscode.env.clipboard.readText().then((text) => {
-					scripts.push(text);
+								//get command line scripts
+								let scripts: Script[] = [];
+								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
+								if (terminals.length <= 0) {
+									vscode.window.showWarningMessage('No terminals found, cannot run copy');
+									return;
+								}
+								vscode.env.clipboard.readText().then((text) => {
+									let scrts = text.split(new RegExp(/PS C:\\.*>/));
+									scrts.shift();
+									scrts.forEach((i) => {
+										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
+										if (s) {
+											scripts.push(new Script(s.split("\r\n")[0], s));
+										}
+									});
+								});
+
+								//create new phase and push it to the relative snapshot
+								node.ref.phases.push(new Phase(qis.phase, code as string, "", scripts, fileTree, deps));
+
+								//update system snapshots array
+								context.globalState.update("snaps", snaps);
+								vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+							}
+						}
+						else {
+							vscode.window.showErrorMessage("Error: Editor not present");
+						}
+					});
 				});
+			});
+		});
+	}));
 
-				//create new phase and push it to the relative snapshot
-				node.ref.phases.push(new Phase(qis.phase, code as string, "", scripts, fileTree, deps));
-
-				//update system snapshots array
-				context.globalState.update("snaps", snaps);
-				vscode.commands.executeCommand("dear-diary.refreshSnapshots");
-			}
-		}
-		else {
-			vscode.window.showErrorMessage("Error: Editor not present");
-		}
+	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newComment', (reply: vscode.CommentReply) => {
+		replyNote(reply);
 	}));
 
 	vscode.window.terminals.forEach(t => {
@@ -174,6 +274,16 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.onDidOpenTerminal(t => {
 		registerTerminalForCapture(t);
 	});
+
+	function replyNote(reply: vscode.CommentReply) {
+		const thread = reply.thread;
+		const newComment = new NoteComment(reply.text, vscode.CommentMode.Preview, { name: 'vscode' }, thread, thread.comments.length ? 'canDelete' : undefined);
+		if (thread.contextValue === 'draft') {
+			newComment.label = 'pending';
+		}
+
+		thread.comments = [...thread.comments, newComment];
+	}
 
 }
 
@@ -231,18 +341,6 @@ function registerTerminalForCapture(terminal: vscode.Terminal) {
 			//   - not sure what to do about carriage return???
 			//   - might have some odd output
 			(<any>terminalData)[terminalId!] += data;
-		});
-	});
-}
-
-function runClipboardMode() {
-	vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
-		vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
-			vscode.commands.executeCommand('workbench.action.terminal.clearSelection');/*.then(() => {
-				vscode.commands.executeCommand('workbench.action.files.newUntitledFile').then(() => {
-					vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-				});
-			});*/
 		});
 	});
 }
@@ -329,10 +427,6 @@ class NewSnapshotsViewProvider implements vscode.WebviewViewProvider {
 	}
 }
 
-/*function updateSnapshotList(snapshots){
-
-}*/
-
 function getNonce() {
 	let text = '';
 	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -344,11 +438,3 @@ function getNonce() {
 
 // this method is called when your extension is deactivated
 export function deactivate() { }
-
-
-/*TODO:
-*-ripulire media/main.js
-*-ripulire extension.ts
-
-
-*/

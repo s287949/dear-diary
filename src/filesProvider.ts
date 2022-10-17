@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Dependency } from './Snapshot';
+import { FSInstance } from './Snapshot';
 
 export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<FileItem | undefined | void> = new vscode.EventEmitter<FileItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<FileItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private files: string[] | undefined) {
+	constructor(private files: FSInstance[] | undefined) {
 	}
 
 	refresh(): void {
@@ -23,41 +23,37 @@ export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 			return Promise.resolve([]);
 		}
 		else if(!element) {
-			return Promise.resolve(this.getFiles());
+			return Promise.resolve(this.getFiles(this.files));
 		}
 		else {
-			return Promise.resolve([]);
+			return Promise.resolve(this.getFiles(element.subfiles));
 		}
 	}
 
 	/**
 	 * Gets the dependencies in input and trasform them in FileItem in order to be dispalyed
 	 */
-	private getFiles(): FileItem[] {
-		const toFile = (file:string): FileItem => {
-			return new FileItem(file, vscode.TreeItemCollapsibleState.None);
+	private getFiles(f: FSInstance[]): FileItem[] {
+		const toFile = (file: FSInstance): FileItem => {
+			return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
 		};
 		
-		const ds = this.files!.map(file => toFile(file));
+		const fs = f? f.map(file => toFile(file)) : [];
 		
-		return ds;
+		return fs;
 	}
 }
 
 export class FileItem extends vscode.TreeItem {
 
 	constructor(
-		public readonly label: string,
+		public readonly label: vscode.TreeItemLabel,
+		public readonly subfiles: FSInstance[],
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		//public readonly command?: vscode.Command
 	) {
 		super(label, collapsibleState);
 	}
-
-	iconPath = {
-		light: path.join(__filename, '..', '..', 'resources', 'light', 'file.svg'),
-		dark: path.join(__filename, '..', '..', 'resources', 'dark', 'file.svg')
-	};
 
 	contextValue = 'file';
 }
