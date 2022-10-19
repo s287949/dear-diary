@@ -35,6 +35,13 @@ export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 	 */
 	private getFiles(f: FSInstance[]): FileItem[] {
 		const toFile = (file: FSInstance): FileItem => {
+			if(file.type==="dir" && file.snap){
+				return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
+					command: 'extension.openFile',
+					title: '',
+					arguments: [file]
+				});
+			}
 			return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
 		};
 		
@@ -50,7 +57,7 @@ export class FileItem extends vscode.TreeItem {
 		public readonly label: vscode.TreeItemLabel,
 		public readonly subfiles: FSInstance[],
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		//public readonly command?: vscode.Command
+		public readonly command?: vscode.Command
 	) {
 		super(label, collapsibleState);
 	}

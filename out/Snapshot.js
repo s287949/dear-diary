@@ -28,10 +28,11 @@ class Dependency {
 }
 exports.Dependency = Dependency;
 class FSInstance {
-    constructor(name, type, fileSnapped, subI) {
+    constructor(name, type, fileSnapped, snap, subI) {
         this.name = name;
         this.type = type;
         this.fileSnapshoted = fileSnapped;
+        this.snap = snap;
         this.subInstances = subI;
     }
 }

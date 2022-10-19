@@ -18,6 +18,11 @@ const path = require("path");
 TODO:
 - adding comments and saving them
 
+CANTDO:
+- get document text when selecting project snapshot
+- when reloading the snapshot it doesn't show the script anymore
+
+
 */
 let terminalData = {};
 let commentId = 1;
@@ -54,16 +59,16 @@ function activate(context) {
     vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
     vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
     //Open file showing code snapshotted
-    vscode.commands.registerCommand('extension.openPhase', phase => {
+    vscode.commands.registerCommand('extension.openPhase', (phase, snap) => {
         const nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(phase.dependencies);
         vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
         const nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(phase.scripts);
         vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
         const nodeFilesProvider = new filesProvider_1.FilesNodeProvider(phase.files);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
-        var setting = vscode.Uri.parse(phase.title ? "untitled:" + "C:\\" + phase.title + ".txt" : "untitled:" + "C:\phase code.txt");
+        var setting = vscode.Uri.parse(phase.title ? "untitled:" + "C:\\" + snap + "\\" + phase.title + ".txt" : "untitled:" + "C:\\" + snap + "\\" + "phase code.txt");
         vscode.workspace.onDidOpenTextDocument((a) => {
-            let fn = phase.title ? "C:\\" + phase.title + ".txt" : "C:\phase code.txt";
+            let fn = phase.title ? "C:\\" + snap + "\\" + phase.title + ".txt" : "C:\\" + snap + "\\" + "phase code.txt";
             if (a.fileName === fn) {
                 vscode.window.showTextDocument(a, 1, false).then(e => {
                     e.edit(edit => {
@@ -101,26 +106,38 @@ function activate(context) {
             debugger;
         });
     });
+    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.createNote', (reply) => {
+        replyNote(reply);
+    }));
     //New code snapshot command impelementation
     const provider = new NewSnapshotsViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, provider));
-    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async () => {
+    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async (type) => {
         await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
             vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
                 vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
                     vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
                         const qis = await (0, multiStepInputNewSnapshot_1.newCodeSnapshot)(context);
                         let fileTree = [];
+                        const t = type;
                         const editor = vscode.window.activeTextEditor;
                         let code;
                         if (editor) {
                             const document = editor.document;
-                            const selection = editor.selection;
-                            code = document.getText(selection);
-                            let range = new vscode.Range(editor.selection.start, editor.selection.end);
+                            if (t === 1) {
+                                const selection = editor.selection;
+                                code = document.getText(selection);
+                            }
+                            else if (t === 2) {
+                                code = document.getText();
+                            }
+                            else if (t !== 3) {
+                                vscode.window.showErrorMessage("Error: Snapshot type not valid");
+                                return;
+                            }
                             let fileName = document.fileName;
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, t);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -149,15 +166,21 @@ function activate(context) {
                                     let scrts = text.split(new RegExp(/PS C:\\.*>/));
                                     scrts.shift();
                                     scrts.forEach((i) => {
-                                        let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
+                                        let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
                                         if (s && s.trim() !== '') {
                                             scripts.push(new Snapshot_1.Script(s.split("\r\n")[0], s));
                                         }
                                     });
                                 });
-                                let commentThread = commentController.createCommentThread(editor.document.uri, range, []);
                                 //creating snapshot and adding it to the array of snapshots
-                                snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps)], "code"));
+                                if (t === 1) {
+                                    snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps)], "code"));
+                                }
+                                else if (t === 2) {
+                                    snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps)], "file"));
+                                }
+                                else if (t === 3) {
+                                }
                                 //updating the system array of snapshots
                                 context.globalState.update("snaps", snaps);
                                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
@@ -178,6 +201,7 @@ function activate(context) {
                     vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
                         const qis = await (0, multiStepInputNewPhase_1.newCodePhase)(context);
                         let fileTree = [];
+                        let t = 0;
                         const editor = vscode.window.activeTextEditor;
                         let code;
                         if (editor) {
@@ -186,7 +210,10 @@ function activate(context) {
                             code = document.getText(selection);
                             let fileName = document.fileName;
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName);
+                                if (node.type === "project") {
+                                    t = 3;
+                                }
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, t);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -248,7 +275,7 @@ function activate(context) {
     }
 }
 exports.activate = activate;
-function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath) {
+function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type) {
     let output = [];
     // return if path to target is not valid
     if (!fs.existsSync(selectedRootPath)) {
@@ -274,12 +301,21 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
         const lastItem = pathsAndFilesArray.indexOf(el) === pathsAndFilesArray.length - 1;
         const isDirectory = fs.statSync(fullPath).isDirectory();
         const isLastDirInTree = isDirectory && lastItem;
-        let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, []);
+        let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
         if (isDirectory) {
-            fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath);
+            fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
         }
-        else if (fullPath === originalFilePath) {
-            fsInst.fileSnapshoted = true;
+        else {
+            if (fullPath === originalFilePath && type !== 3) {
+                fsInst.fileSnapshoted = true;
+            }
+            else if (type === 3) {
+                vscode.workspace.findFiles("package.json").then((doc) => {
+                    vscode.workspace.openTextDocument(doc[0]).then((d) => {
+                        fsInst.snap = d.getText();
+                    });
+                });
+            }
         }
         output.push(fsInst);
     });
@@ -315,9 +351,22 @@ class NewSnapshotsViewProvider {
             switch (data.type) {
                 case 'new-code-snap':
                     {
-                        vscode.commands.executeCommand("dear-diary.new-code-snapshot");
+                        vscode.commands.executeCommand("dear-diary.new-code-snapshot", 1);
                         break;
                     }
+                    ;
+                case 'new-file-snap':
+                    {
+                        vscode.commands.executeCommand("dear-diary.new-code-snapshot", 2);
+                        break;
+                    }
+                    ;
+                case 'new-project-snap':
+                    {
+                        vscode.commands.executeCommand("dear-diary.new-code-snapshot", 3);
+                        break;
+                    }
+                    ;
             }
         });
     }

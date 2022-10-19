@@ -20,7 +20,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 	getChildren(element?: SnapshotItem | PhaseItem): Thenable<SnapshotItem[] | PhaseItem[]> {
 		if (element instanceof SnapshotItem) {
 			return Promise.resolve(
-				this.getPhases(element.phases)
+				this.getPhases(element.phases, element.title)
 			);
 		} 
 		else if(element instanceof PhaseItem) {
@@ -49,7 +49,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		return snapshots;
 	}
 
-	private getPhases(phases: Phase[] | undefined): PhaseItem[] {
+	private getPhases(phases: Phase[] | undefined, snap: string): PhaseItem[] {
 		if(!phases){
 			return [];
 		}
@@ -58,7 +58,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 			return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openPhase',
 				title: '',
-				arguments: [phase]
+				arguments: [phase, snap]
 			});
 		};
 
@@ -75,19 +75,35 @@ export class SnapshotItem extends vscode.TreeItem {
 		public ref: Snapshot,
 		public readonly title: string,
 		public phases : Phase[],
-		private type: string,
+		public type: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState
 	) {
 		super(title, collapsibleState);
 		this.contextValue="snapshot";
 	}
 
-	iconPath = {
-		light: path.join(__filename, '..', '..', 'resources', 'light', 'code.svg'),
-		dark: path.join(__filename, '..', '..', 'resources', 'dark', 'code.svg')
-	};
+	iconPath = checkType(this.type);
+}
 
-	
+function checkType(type: string) {
+	if(type==="code"){
+		return {
+			light: path.join(__filename, '..', '..', 'resources', 'light', 'code.svg'),
+			dark: path.join(__filename, '..', '..', 'resources', 'dark', 'code.svg')
+		};
+	}
+	else if(type==="file"){
+		return {
+			light: path.join(__filename, '..', '..', 'resources', 'light', 'file-code.svg'),
+			dark: path.join(__filename, '..', '..', 'resources', 'dark', 'file-code.svg')
+		};
+	}
+	else if(type==="project"){
+		return {
+			light: path.join(__filename, '..', '..', 'resources', 'light', 'folder.svg'),
+			dark: path.join(__filename, '..', '..', 'resources', 'dark', 'folder.svg')
+		};
+	}
 }
 
 class PhaseItem extends vscode.TreeItem {

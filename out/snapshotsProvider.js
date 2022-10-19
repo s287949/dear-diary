@@ -17,7 +17,7 @@ class SnapshotsProvider {
     }
     getChildren(element) {
         if (element instanceof SnapshotItem) {
-            return Promise.resolve(this.getPhases(element.phases));
+            return Promise.resolve(this.getPhases(element.phases, element.title));
         }
         else if (element instanceof PhaseItem) {
             return Promise.resolve([]);
@@ -38,7 +38,7 @@ class SnapshotsProvider {
             : [];
         return snapshots;
     }
-    getPhases(phases) {
+    getPhases(phases, snap) {
         if (!phases) {
             return [];
         }
@@ -46,7 +46,7 @@ class SnapshotsProvider {
             return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
                 command: 'extension.openPhase',
                 title: '',
-                arguments: [phase]
+                arguments: [phase, snap]
             });
         };
         const ps = phases
@@ -64,14 +64,31 @@ class SnapshotItem extends vscode.TreeItem {
         this.phases = phases;
         this.type = type;
         this.collapsibleState = collapsibleState;
-        this.iconPath = {
-            light: path.join(__filename, '..', '..', 'resources', 'light', 'code.svg'),
-            dark: path.join(__filename, '..', '..', 'resources', 'dark', 'code.svg')
-        };
+        this.iconPath = checkType(this.type);
         this.contextValue = "snapshot";
     }
 }
 exports.SnapshotItem = SnapshotItem;
+function checkType(type) {
+    if (type === "code") {
+        return {
+            light: path.join(__filename, '..', '..', 'resources', 'light', 'code.svg'),
+            dark: path.join(__filename, '..', '..', 'resources', 'dark', 'code.svg')
+        };
+    }
+    else if (type === "file") {
+        return {
+            light: path.join(__filename, '..', '..', 'resources', 'light', 'file-code.svg'),
+            dark: path.join(__filename, '..', '..', 'resources', 'dark', 'file-code.svg')
+        };
+    }
+    else if (type === "project") {
+        return {
+            light: path.join(__filename, '..', '..', 'resources', 'light', 'folder.svg'),
+            dark: path.join(__filename, '..', '..', 'resources', 'dark', 'folder.svg')
+        };
+    }
+}
 class PhaseItem extends vscode.TreeItem {
     constructor(title, code, comment, phaseno, collapsibleState, command) {
         super(title, collapsibleState);

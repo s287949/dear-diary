@@ -30,6 +30,13 @@ class FilesNodeProvider {
      */
     getFiles(f) {
         const toFile = (file) => {
+            if (file.type === "dir" && file.snap) {
+                return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
+                    command: 'extension.openFile',
+                    title: '',
+                    arguments: [file]
+                });
+            }
             return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
         };
         const fs = f ? f.map(file => toFile(file)) : [];
@@ -38,11 +45,12 @@ class FilesNodeProvider {
 }
 exports.FilesNodeProvider = FilesNodeProvider;
 class FileItem extends vscode.TreeItem {
-    constructor(label, subfiles, collapsibleState) {
+    constructor(label, subfiles, collapsibleState, command) {
         super(label, collapsibleState);
         this.label = label;
         this.subfiles = subfiles;
         this.collapsibleState = collapsibleState;
+        this.command = command;
         this.contextValue = 'file';
     }
 }

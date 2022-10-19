@@ -42,12 +42,14 @@ export class FSInstance{
 	name: string;
 	type: string;
 	fileSnapshoted: boolean;
+	snap: string;
 	subInstances: FSInstance[];
 
-	public constructor(name:string, type: string, fileSnapped: boolean, subI: FSInstance[]){
+	public constructor(name:string, type: string, fileSnapped: boolean, snap: string, subI: FSInstance[]){
 		this.name = name;
 		this.type = type;
 		this.fileSnapshoted = fileSnapped;
+		this.snap = snap;
 		this.subInstances = subI;
 	}
 }
