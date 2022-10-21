@@ -20,6 +20,7 @@ TODO:
 CANTDO:
 - get document text when selecting project snapshot
 - when reloading the snapshot it doesn't show the script anymore
+- comments are weird
 
 
 */
@@ -163,7 +164,7 @@ export function activate(context: vscode.ExtensionContext) {
 								return;
 							}
 
-							if (!code) {
+							if (!code && t!==3) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
@@ -351,14 +352,16 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
 
 		if (isDirectory) {
-			fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
+			if(!fsInst.name.startsWith(".", 0)){
+				fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
+			}
 		}
 		else {
 			if (fullPath === originalFilePath && type !== 3) {
 				fsInst.fileSnapshoted = true;
 			}
 			else if (type === 3) {
-				vscode.workspace.findFiles("package.json").then((doc) => {
+				vscode.workspace.findFiles("*").then((doc) => {
 					vscode.workspace.openTextDocument(doc[0]).then((d) => {
 						fsInst.snap = d.getText();
 					});
