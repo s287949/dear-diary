@@ -16,9 +16,6 @@ const fs = require("fs");
 const path = require("path");
 /*
 TODO:
-- adding comments and saving them
-
-CANTDO:
 - get document text when selecting project snapshot
 - when reloading the snapshot it doesn't show the script anymore
 - comments are weird
@@ -26,18 +23,6 @@ CANTDO:
 
 */
 let terminalData = {};
-let commentId = 1;
-class NoteComment {
-    constructor(body, mode, author, parent, contextValue) {
-        this.body = body;
-        this.mode = mode;
-        this.author = author;
-        this.parent = parent;
-        this.contextValue = contextValue;
-        this.id = ++commentId;
-        this.savedBody = this.body;
-    }
-}
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 function activate(context) {
@@ -45,16 +30,6 @@ function activate(context) {
     //Show dependencies in the Dependencies view
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-    // A `CommentController` is able to provide comments for documents.
-    const commentController = vscode.comments.createCommentController('diary-comment', 'Diary snapshot comment');
-    context.subscriptions.push(commentController);
-    // A `CommentingRangeProvider` controls where gutter decorations that allow adding comments are shown
-    /*commentController.commentingRangeProvider = {
-        provideCommentingRanges: (document: vscode.TextDocument, token: vscode.CancellationToken) => {
-            const lineCount = document.lineCount;
-            return [new vscode.Range(0, 0, lineCount - 1, 0)];
-        }
-    };*/
     //Providing Snapshots to the related view
     const snapshotsProvider = new snapshotsProvider_1.SnapshotsProvider(context);
     vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
@@ -107,12 +82,15 @@ function activate(context) {
             debugger;
         });
     });
-    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.createNote', (reply) => {
-        replyNote(reply);
-    }));
+    //Comment webview implementation
+    const commentProvider = new CommentViewProvider(context.extensionUri);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
+    vscode.commands.registerCommand('dear-diary.comment', () => {
+        vscode.window.createWebviewPanel("webview", "Comment", undefined);
+    });
     //New code snapshot command impelementation
-    const provider = new NewSnapshotsViewProvider(context.extensionUri);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, provider));
+    const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async (type) => {
         await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
             vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
@@ -257,23 +235,12 @@ function activate(context) {
             });
         });
     }));
-    context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newComment', (reply) => {
-        replyNote(reply);
-    }));
     vscode.window.terminals.forEach(t => {
         registerTerminalForCapture(t);
     });
     vscode.window.onDidOpenTerminal(t => {
         registerTerminalForCapture(t);
     });
-    function replyNote(reply) {
-        const thread = reply.thread;
-        const newComment = new NoteComment(reply.text, vscode.CommentMode.Preview, { name: 'vscode' }, thread, thread.comments.length ? 'canDelete' : undefined);
-        if (thread.contextValue === 'draft') {
-            newComment.label = 'pending';
-        }
-        thread.comments = [...thread.comments, newComment];
-    }
 }
 exports.activate = activate;
 function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type) {
@@ -413,6 +380,76 @@ class NewSnapshotsViewProvider {
     }
 }
 NewSnapshotsViewProvider.viewType = 'new-snapshots';
+class CommentViewProvider {
+    constructor(_extensionUri) {
+        this._extensionUri = _extensionUri;
+    }
+    resolveWebviewView(webviewView, context, _token) {
+        this._view = webviewView;
+        webviewView.webview.options = {
+            // Allow scripts in the webview
+            enableScripts: true,
+            localResourceRoots: [
+                this._extensionUri
+            ]
+        };
+        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+        webviewView.webview.onDidReceiveMessage(data => {
+            switch (data.type) {
+                case 'colorSelected':
+                    {
+                        vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
+                        break;
+                    }
+            }
+        });
+    }
+    _getHtmlForWebview(webview) {
+        // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'commentMain.js'));
+        // Do the same for the stylesheet.
+        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+        const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
+        // Use a nonce to only allow a specific script to be run.
+        const nonce = getNonce();
+        return `<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+
+				<!--
+					Use a content security policy to only allow loading images from https or from our extension directory,
+					and only allow scripts that have a specific nonce.
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+				<link href="${styleResetUri}" rel="stylesheet">
+				<link href="${styleVSCodeUri}" rel="stylesheet">
+				<link href="${styleMainUri}" rel="stylesheet">
+				
+				<title>Comments</title>
+			</head>
+			<body>
+				<div class="card">
+					<div class="container">
+						<p>Text</p>
+					</div>
+				</div>
+				<form>
+					<input type="text" id="comment" name="comment"><br>
+				</form>
+
+				<button class="edit-comment-button">Edit</button>
+
+				<script nonce="${nonce}" src="${scriptUri}"></script>
+			</body>
+			</html>`;
+    }
+}
+CommentViewProvider.viewType = 'comment';
 function getNonce() {
     let text = '';
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

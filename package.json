@@ -36,6 +36,11 @@
 				"icon": "$(add)"
 			},
 			{
+				"command": "dear-diary.comment",
+				"title": "Add a comment",
+				"icon": "$(comment)"
+			},
+			{
 				"command": "dear-diary.newComment",
 				"title": "Create comment",
 				"enablement": "!commentIsEmpty"
@@ -51,11 +56,11 @@
 			],
 			"panel": [
 				{
-				  "id": "comment",
-				  "title": "Comment",
-				  "icon": "$(comment)"
+					"id": "comment",
+					"title": "Comment",
+					"icon": "$(comment)"
 				}
-			  ]
+			]
 		},
 		"views": {
 			"dear-diary": [
@@ -84,40 +89,33 @@
 			],
 			"comment": [
 				{
-					"id": "add-comment",
+					"type": "webview",
+					"id": "comment",
 					"name": "Add comment"
 				}
 			]
 		},
 		"menus": {
 			"view/title": [
-			  {
-				"command": "dear-diary.refreshSnapshots",
-				"when": "view == snapshots",
-				"group": "navigation"
-			  }
+				{
+					"command": "dear-diary.refreshSnapshots",
+					"when": "view == snapshots",
+					"group": "navigation"
+				}
 			],
 			"view/item/context": [
 				{
-				  "command": "dear-diary.newPhase",
-				  "when": "view == snapshots && viewItem == snapshot",
-				  "group": "inline"
-				}
-			],
-			"commandPalette": [
+					"command": "dear-diary.newPhase",
+					"when": "view == snapshots && viewItem == snapshot",
+					"group": "inline"
+				},
 				{
-					"command": "dear-diary.newComment",
-					"when": "false"
-				}
-			],
-			"comments/commentThread/context": [
-				{
-					"command": "dear-diary.newComment",
-					"group": "inline",
-					"when": "commentController == comment-sample && commentThreadIsEmpty"
+					"command": "dear-diary.comment",
+					"when": "view == snapshots && viewItem == phase",
+					"group": "inline"
 				}
 			]
-		  }
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
