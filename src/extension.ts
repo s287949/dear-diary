@@ -15,9 +15,7 @@ import * as path from 'path';
 
 /*
 TODO:
-- get document text when selecting project snapshot
-- when reloading the snapshot it doesn't show the script anymore
-- comments are weird
+- change tab when panel is opened for commenting
 
 
 */
@@ -62,6 +60,8 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error(error);
 			debugger;
 		});
+		const vscodeAPI = acquireVsCodeApi();
+		vscodeAPI.setState({activePhase: phase});
 	});
 	//Open file showing the command line script and the output
 	vscode.commands.registerCommand('extension.openScript', script => {
@@ -92,8 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const commentProvider = new CommentViewProvider(context.extensionUri);
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
 	vscode.commands.registerCommand('dear-diary.comment', () => {
-		vscode.window.createWebviewPanel("webview", "Comment", undefined);
-		
+		vscode.commands.executeCommand('workbench.action.togglePanel');
 	});
 
 	//New code snapshot command impelementation
@@ -444,7 +443,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 	private _view?: vscode.WebviewView;
 
 	constructor(
-		private readonly _extensionUri: vscode.Uri,
+		private readonly _extensionUri: vscode.Uri
 	) { }
 
 	public resolveWebviewView(
@@ -508,22 +507,37 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				<title>Comments</title>
 			</head>
 			<body>
-				<div class="card">
+				<div id="card" class="card">
 					<div class="container">
-						<p>Text</p>
+						<p class="text-box"></p>
 					</div>
 				</div>
-				<form>
-					<input type="text" id="comment" name="comment"><br>
-				</form>
 
-				<button class="edit-comment-button">Edit</button>
+				<form class="addComment">
+				</form>
+				
+				<div class="buttons-row">
+					<button id="cancelbtn" class="ghost">Cancel</button>
+					<button id="editbtn" class="edit-comment-button">Edit</button>
+					<button id="savebtn" class="ghost">Save</button>
+				</div>
 
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
 	}
 }
+
+/*
+<div class="card">
+	<div class="container">
+		<p>Text</p>
+	</div>
+</div>
+<form>
+	<input type="text" id="comment" name="comment"><br>
+</form>
+*/
 
 function getNonce() {
 	let text = '';

@@ -91,7 +91,7 @@
 				{
 					"type": "webview",
 					"id": "comment",
-					"name": "Add comment"
+					"name": ""
 				}
 			]
 		},
