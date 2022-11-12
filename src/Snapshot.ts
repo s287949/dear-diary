@@ -1,24 +1,24 @@
-export class Snapshot {
+export class Diary {
 	title: string;
-	phases: Array<Phase>;
+	snapshots: Array<Snapshot>;
 	type: string;
 
-	public constructor(title: string, phases: Array<Phase>, type:string) {
+	public constructor(title: string, phases: Array<Snapshot>, type:string) {
 		this.title = title;
-		this.phases = phases;
+		this.snapshots = phases;
 		this.type=type;
 	}
 }
 
-export class Phase {
+export class Snapshot {
 	title: string;
 	code: string;
 	comment: string;
-	scripts: Script[];
+	scripts: Resource[];
 	files: FSInstance[];
-	dependencies: Dependency[];
+	dependencies: Resource[];
 
-	public constructor(title: string, code: string, comment: string, scripts:Script[], files:FSInstance[], dependencies: Dependency[]) {
+	public constructor(title: string, code: string, comment: string, scripts:Resource[], files:FSInstance[], dependencies: Resource[]) {
 		this.title = title;
 		this.code = code;
 		this.comment = comment;
@@ -28,13 +28,15 @@ export class Phase {
 	}
 }
 
-export class Dependency{
-	module: string;
-	version: string;
+export class Resource{
+	moduleOrCommand: string;
+	versionOrOutput: string;
+	type: string;
 
-	public constructor(module: string, version:string){
-		this.module=module;
-		this.version=version;
+	public constructor(module: string, version:string, type: string){
+		this.moduleOrCommand=module;
+		this.versionOrOutput=version;
+		this.type=type;
 	}
 }
 
@@ -51,15 +53,5 @@ export class FSInstance{
 		this.fileSnapshoted = fileSnapped;
 		this.snap = snap;
 		this.subInstances = subI;
-	}
-}
-
-export class Script{
-	script: string;
-	output: string;
-
-	public constructor(script: string, output:string){
-		this.script=script;
-		this.output=output;
 	}
 }

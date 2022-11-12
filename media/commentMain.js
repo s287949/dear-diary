@@ -6,17 +6,12 @@
 (function () {
     const vscode = acquireVsCodeApi();
 
-    //const oldState = vscode.getState() || { colors: [] };
-
-    /** @type {Array<{ value: string }>} */
-    //let colors = oldState.colors;
-
-    const txtbox = document.querySelector('.text-box');  
-    txtbox.textContent = "prova";
-
-
-    document.querySelector('.edit-comment-button').addEventListener('click', () => {
-        editComment();
+    document.querySelector('#editbtn').addEventListener('click', () => {
+        const frm = document.querySelector('.edit-comment-button');
+        if(frm)
+            frm.className="ghost";
+        
+        //editComment();
     });
 
     // Handle messages sent from the extension to the webview
@@ -46,16 +41,15 @@
 
         const frm = document.querySelector('.addComment');
         const input = document.createElement('input');
-        input.className="comment";
         input.type="text";
         input.className = "input-box";
         frm?.appendChild(input);
 
-        const editButton = document.querySelector('#editbtn');
+        /*const editButton = document.querySelector('#editbtn');
         const saveButton = document.querySelector('#savebtn');
         const cancelButton = document.querySelector('#cancelbtn');
         cancelButton.className = "cancel-button";
-        editButton.className = "ghost";
+        editButton.className = "ghost";*/
 
         /*saveButton.addEventListener('click', () => {
             editButton?.className = "edit-comment-button";
@@ -65,5 +59,4 @@
         });*/
 
     }
-
-}(;
+});

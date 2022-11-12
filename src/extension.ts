@@ -7,7 +7,7 @@ import { DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider, SnapshotItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
 import { ScriptsProvider } from './scriptsProvider';
-import { Snapshot, Phase, FSInstance, Script } from './Snapshot';
+import { Diary, Snapshot, FSInstance, Resource } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -26,7 +26,7 @@ let terminalData = {};
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	let snaps: Array<Snapshot> | undefined = context.globalState.get("snaps");
+	let snaps: Array<Diary> | undefined = context.globalState.get("snaps");
 	//Show dependencies in the Dependencies view
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -60,28 +60,23 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error(error);
 			debugger;
 		});
-		const vscodeAPI = acquireVsCodeApi();
-		vscodeAPI.setState({activePhase: phase});
+		//const vscodeAPI = acquireVsCodeApi();
+		//vscodeAPI.setState({activePhase: phase});
 	});
 	//Open file showing the command line script and the output
 	vscode.commands.registerCommand('extension.openScript', script => {
-		var setting: vscode.Uri = vscode.Uri.parse("untitled:" + "C:\\" + script.script + ".txt");
+		var setting: vscode.Uri = vscode.Uri.parse("untitled:" + "C:\\" + script.moduleOrCommand + ".txt");
 		vscode.workspace.onDidOpenTextDocument((a) => {
-			if (a.fileName === "C:\\" + script.script + ".txt") {
+			if (a.fileName === "C:\\" + script.moduleOrCommand + ".txt") {
 				vscode.window.showTextDocument(a, 1, false).then(e => {
 					e.edit(edit => {
-						edit.insert(new vscode.Position(0, 0), script.output);
+						edit.insert(new vscode.Position(0, 0), script.versionOrOutput);
 					});
 				});
 			}
 
 		});
 		vscode.workspace.openTextDocument(setting).then((a: vscode.TextDocument) => {
-			/*vscode.window.showTextDocument(a, 1, false).then(e => {
-				e.edit(edit => {
-					edit.insert(new vscode.Position(0, 0), script.output);
-				});
-			});*/
 		}, (error: any) => {
 			console.error(error);
 			debugger;
@@ -150,32 +145,34 @@ export function activate(context: vscode.ExtensionContext) {
 								let deps = getDepsInPackageJson(rootPath);
 
 								//get command line scripts
-								let scripts: Script[] = [];
+								let scripts: Resource[] = [];
 								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 								if (terminals.length <= 0) {
 									vscode.window.showWarningMessage('No terminals found, cannot run copy');
 									return;
 								}
-								vscode.env.clipboard.readText().then((text) => {
+								await vscode.env.clipboard.readText().then((text) => {
 									let scrts = text.split(new RegExp(/PS C:\\.*>/));
 									scrts.shift();
 									scrts.forEach((i) => {
 										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
 
 										if (s && s.trim() !== '') {
-											scripts.push(new Script(s.split("\r\n")[0], s));
+											scripts.push(new Resource(s.split("\r\n")[0], s, "script"));
 										}
 									});
 								});
 
+
 								//creating snapshot and adding it to the array of snapshots
 								if (t === 1) {
-									snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
+									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
 								}
 								else if (t === 2) {
-									snaps.push(new Snapshot(qis.name, [new Phase(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
+									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
 								}
 								else if (t === 3) {
+
 
 								}
 
@@ -231,25 +228,26 @@ export function activate(context: vscode.ExtensionContext) {
 								let deps = getDepsInPackageJson(rootPath);
 
 								//get command line scripts
-								let scripts: Script[] = [];
+								let scripts: Resource[] = [];
 								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 								if (terminals.length <= 0) {
 									vscode.window.showWarningMessage('No terminals found, cannot run copy');
 									return;
 								}
-								vscode.env.clipboard.readText().then((text) => {
+
+								await vscode.env.clipboard.readText().then((text) => {
 									let scrts = text.split(new RegExp(/PS C:\\.*>/));
 									scrts.shift();
 									scrts.forEach((i) => {
 										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
 										if (s) {
-											scripts.push(new Script(s.split("\r\n")[0], s));
+											scripts.push(new Resource(s.split("\r\n")[0], s, "script"));
 										}
 									});
 								});
 
 								//create new phase and push it to the relative snapshot
-								node.ref.phases.push(new Phase(qis.phase, code as string, "", scripts, fileTree, deps));
+								node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps));
 
 								//update system snapshots array
 								context.globalState.update("snaps", snaps);
@@ -426,9 +424,9 @@ class NewSnapshotsViewProvider implements vscode.WebviewViewProvider {
 			</head>
 			<body>
 
-				<button class="new-code-snapshot-button">New Code Snapshot</button>
-				<button class="new-file-snapshot-button">New File Snapshot</button>
-				<button class="new-project-snapshot-button">New Project Snapshot</button>
+				<button class="new-code-snapshot-button">New Code Diary</button>
+				<button class="new-file-snapshot-button">New File Diary</button>
+				<button class="new-project-snapshot-button">New Project Diary</button>
 				
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
@@ -466,9 +464,9 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 		webviewView.webview.onDidReceiveMessage(data => {
 			switch (data.type) {
-				case 'colorSelected':
+				case 'edited':
 					{
-						vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
+						
 						break;
 					}
 			}
@@ -486,6 +484,8 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 		// Use a nonce to only allow a specific script to be run.
 		const nonce = getNonce();
+
+		const p = "prova";
 
 		return `<!DOCTYPE html>
 			<html lang="en">
@@ -516,28 +516,18 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				<form class="addComment">
 				</form>
 				
-				<div class="buttons-row">
+				<div class="buttons-row">				
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="edit-comment-button">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
 				</div>
+				
 
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
 	}
 }
-
-/*
-<div class="card">
-	<div class="container">
-		<p>Text</p>
-	</div>
-</div>
-<form>
-	<input type="text" id="comment" name="comment"><br>
-</form>
-*/
 
 function getNonce() {
 	let text = '';

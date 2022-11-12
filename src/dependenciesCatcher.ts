@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Dependency } from './Snapshot';
+import { Resource } from './Snapshot';
 
 
-export function getDepsInPackageJson(workspaceRoot: string | undefined): Dependency[] {
+export function getDepsInPackageJson(workspaceRoot: string | undefined): Resource[] {
 	if (!workspaceRoot) {
         vscode.window.showInformationMessage('No dependency in empty workspace');
         return [];
@@ -15,8 +15,8 @@ export function getDepsInPackageJson(workspaceRoot: string | undefined): Depende
     if (pathExists(packageJsonPath)) {
 		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 
-		const toDep = (moduleName: string, version: string): Dependency => {
-			return new Dependency(moduleName, version);
+		const toDep = (moduleName: string, version: string): Resource => {
+			return new Resource(moduleName, version, "dependency");
 		};
 
 		const deps = packageJson.dependencies

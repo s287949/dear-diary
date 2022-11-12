@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Script } from './Snapshot';
+import { Resource } from './Snapshot';
 
 export class ScriptsProvider implements vscode.TreeDataProvider<ScriptItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<ScriptItem | undefined | void> = new vscode.EventEmitter<ScriptItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<ScriptItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private scripts: Script[] | undefined) {
+	constructor(private scripts: Resource[] | undefined) {
 	}
 
 	refresh(): void {
@@ -34,15 +34,17 @@ export class ScriptsProvider implements vscode.TreeDataProvider<ScriptItem> {
 	 * Gets the dependencies in input and trasform them in ScriptItem in order to be dispalyed
 	 */
 	private getScripts(): ScriptItem[] {
-		const toScript = (script:Script): ScriptItem => {
-			return new ScriptItem(script.script, vscode.TreeItemCollapsibleState.None, {
+		const toScript = (script:Resource): ScriptItem => {
+			return new ScriptItem(script.moduleOrCommand, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openScript',
 				title: '',
 				arguments: [script]
 			});
 		};
+
 		
-		const ds = this.scripts!.map(script => toScript(script));
+		
+		const ds = this.scripts? this.scripts.map(script => toScript(script)) : [];
 		
 		return ds;
 	}

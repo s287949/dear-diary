@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Snapshot, Phase } from './Snapshot';
+import { Diary, Snapshot } from './Snapshot';
 
 
 export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem | PhaseItem> {
@@ -33,13 +33,13 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		}
 	}
 	
-	private getSnapshots(snaps: Snapshot[] | undefined): SnapshotItem[] {
+	private getSnapshots(snaps: Diary[] | undefined): SnapshotItem[] {
 		if(!snaps){
 			return [];
 		}
 		
-		const toSnap = (snap: Snapshot): SnapshotItem => {
-			return new SnapshotItem(snap, snap.title, snap.phases, snap.type,vscode.TreeItemCollapsibleState.Collapsed);
+		const toSnap = (snap: Diary): SnapshotItem => {
+			return new SnapshotItem(snap, snap.title, snap.snapshots, snap.type,vscode.TreeItemCollapsibleState.Collapsed);
 		};
 
 		const snapshots = snaps
@@ -49,12 +49,12 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		return snapshots;
 	}
 
-	private getPhases(phases: Phase[] | undefined, snap: string): PhaseItem[] {
+	private getPhases(phases: Snapshot[] | undefined, snap: string): PhaseItem[] {
 		if(!phases){
 			return [];
 		}
 		
-		const toPhase = (phase: Phase, index:number): PhaseItem => {
+		const toPhase = (phase: Snapshot, index:number): PhaseItem => {
 			return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openPhase',
 				title: '',
@@ -72,9 +72,9 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 
 export class SnapshotItem extends vscode.TreeItem {
 	constructor(
-		public ref: Snapshot,
+		public ref: Diary,
 		public readonly title: string,
-		public phases : Phase[],
+		public phases : Snapshot[],
 		public type: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState
 	) {

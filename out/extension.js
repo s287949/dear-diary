@@ -56,27 +56,22 @@ function activate(context) {
             console.error(error);
             debugger;
         });
-        const vscodeAPI = acquireVsCodeApi();
-        vscodeAPI.setState({ activePhase: phase });
+        //const vscodeAPI = acquireVsCodeApi();
+        //vscodeAPI.setState({activePhase: phase});
     });
     //Open file showing the command line script and the output
     vscode.commands.registerCommand('extension.openScript', script => {
-        var setting = vscode.Uri.parse("untitled:" + "C:\\" + script.script + ".txt");
+        var setting = vscode.Uri.parse("untitled:" + "C:\\" + script.moduleOrCommand + ".txt");
         vscode.workspace.onDidOpenTextDocument((a) => {
-            if (a.fileName === "C:\\" + script.script + ".txt") {
+            if (a.fileName === "C:\\" + script.moduleOrCommand + ".txt") {
                 vscode.window.showTextDocument(a, 1, false).then(e => {
                     e.edit(edit => {
-                        edit.insert(new vscode.Position(0, 0), script.output);
+                        edit.insert(new vscode.Position(0, 0), script.versionOrOutput);
                     });
                 });
             }
         });
         vscode.workspace.openTextDocument(setting).then((a) => {
-            /*vscode.window.showTextDocument(a, 1, false).then(e => {
-                e.edit(edit => {
-                    edit.insert(new vscode.Position(0, 0), script.output);
-                });
-            });*/
         }, (error) => {
             console.error(error);
             debugger;
@@ -141,22 +136,22 @@ function activate(context) {
                                     vscode.window.showWarningMessage('No terminals found, cannot run copy');
                                     return;
                                 }
-                                vscode.env.clipboard.readText().then((text) => {
+                                await vscode.env.clipboard.readText().then((text) => {
                                     let scrts = text.split(new RegExp(/PS C:\\.*>/));
                                     scrts.shift();
                                     scrts.forEach((i) => {
                                         let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
                                         if (s && s.trim() !== '') {
-                                            scripts.push(new Snapshot_1.Script(s.split("\r\n")[0], s));
+                                            scripts.push(new Snapshot_1.Resource(s.split("\r\n")[0], s, "script"));
                                         }
                                     });
                                 });
                                 //creating snapshot and adding it to the array of snapshots
                                 if (t === 1) {
-                                    snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps)], "code"));
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "code"));
                                 }
                                 else if (t === 2) {
-                                    snaps.push(new Snapshot_1.Snapshot(qis.name, [new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps)], "file"));
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "file"));
                                 }
                                 else if (t === 3) {
                                 }
@@ -210,18 +205,18 @@ function activate(context) {
                                     vscode.window.showWarningMessage('No terminals found, cannot run copy');
                                     return;
                                 }
-                                vscode.env.clipboard.readText().then((text) => {
+                                await vscode.env.clipboard.readText().then((text) => {
                                     let scrts = text.split(new RegExp(/PS C:\\.*>/));
                                     scrts.shift();
                                     scrts.forEach((i) => {
                                         let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
                                         if (s) {
-                                            scripts.push(new Snapshot_1.Script(s.split("\r\n")[0], s));
+                                            scripts.push(new Snapshot_1.Resource(s.split("\r\n")[0], s, "script"));
                                         }
                                     });
                                 });
                                 //create new phase and push it to the relative snapshot
-                                node.ref.phases.push(new Snapshot_1.Phase(qis.phase, code, "", scripts, fileTree, deps));
+                                node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps));
                                 //update system snapshots array
                                 context.globalState.update("snaps", snaps);
                                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
@@ -370,9 +365,9 @@ class NewSnapshotsViewProvider {
 			</head>
 			<body>
 
-				<button class="new-code-snapshot-button">New Code Snapshot</button>
-				<button class="new-file-snapshot-button">New File Snapshot</button>
-				<button class="new-project-snapshot-button">New Project Snapshot</button>
+				<button class="new-code-snapshot-button">New Code Diary</button>
+				<button class="new-file-snapshot-button">New File Diary</button>
+				<button class="new-project-snapshot-button">New Project Diary</button>
 				
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
@@ -396,9 +391,8 @@ class CommentViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
-                case 'colorSelected':
+                case 'edited':
                     {
-                        vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
                         break;
                     }
             }
@@ -413,6 +407,7 @@ class CommentViewProvider {
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
+        const p = "prova";
         return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -442,11 +437,12 @@ class CommentViewProvider {
 				<form class="addComment">
 				</form>
 				
-				<div class="buttons-row">
+				<div class="buttons-row">				
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="edit-comment-button">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
 				</div>
+				
 
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
@@ -454,16 +450,6 @@ class CommentViewProvider {
     }
 }
 CommentViewProvider.viewType = 'comment';
-/*
-<div class="card">
-    <div class="container">
-        <p>Text</p>
-    </div>
-</div>
-<form>
-    <input type="text" id="comment" name="comment"><br>
-</form>
-*/
 function getNonce() {
     let text = '';
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

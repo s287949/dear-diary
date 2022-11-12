@@ -1,15 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Script = exports.FSInstance = exports.Dependency = exports.Phase = exports.Snapshot = void 0;
-class Snapshot {
+exports.FSInstance = exports.Resource = exports.Snapshot = exports.Diary = void 0;
+class Diary {
     constructor(title, phases, type) {
         this.title = title;
-        this.phases = phases;
+        this.snapshots = phases;
         this.type = type;
     }
 }
-exports.Snapshot = Snapshot;
-class Phase {
+exports.Diary = Diary;
+class Snapshot {
     constructor(title, code, comment, scripts, files, dependencies) {
         this.title = title;
         this.code = code;
@@ -19,14 +19,15 @@ class Phase {
         this.dependencies = dependencies;
     }
 }
-exports.Phase = Phase;
-class Dependency {
-    constructor(module, version) {
-        this.module = module;
-        this.version = version;
+exports.Snapshot = Snapshot;
+class Resource {
+    constructor(module, version, type) {
+        this.moduleOrCommand = module;
+        this.versionOrOutput = version;
+        this.type = type;
     }
 }
-exports.Dependency = Dependency;
+exports.Resource = Resource;
 class FSInstance {
     constructor(name, type, fileSnapped, snap, subI) {
         this.name = name;
@@ -37,11 +38,4 @@ class FSInstance {
     }
 }
 exports.FSInstance = FSInstance;
-class Script {
-    constructor(script, output) {
-        this.script = script;
-        this.output = output;
-    }
-}
-exports.Script = Script;
 //# sourceMappingURL=Snapshot.js.map

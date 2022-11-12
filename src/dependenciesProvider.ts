@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Dependency } from './Snapshot';
+import { Resource } from './Snapshot';
 
 export class DepNodeProvider implements vscode.TreeDataProvider<DependencyItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<DependencyItem | undefined | void> = new vscode.EventEmitter<DependencyItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<DependencyItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private deps: Dependency[] | undefined) {
+	constructor(private deps: Resource[] | undefined) {
 	}
 
 	refresh(): void {
@@ -37,8 +37,8 @@ export class DepNodeProvider implements vscode.TreeDataProvider<DependencyItem> 
 		const toDep = (module:string, version:string): DependencyItem => {
 			return new DependencyItem(module, version, vscode.TreeItemCollapsibleState.None);
 		};
-		
-		const ds = this.deps!.map(dep => toDep(dep.module, dep.version));
+
+		const ds = this.deps? this.deps.map(dep => toDep(dep.moduleOrCommand, dep.versionOrOutput)) : [];
 		
 		return ds;
 	}

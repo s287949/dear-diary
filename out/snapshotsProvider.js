@@ -31,7 +31,7 @@ class SnapshotsProvider {
             return [];
         }
         const toSnap = (snap) => {
-            return new SnapshotItem(snap, snap.title, snap.phases, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
+            return new SnapshotItem(snap, snap.title, snap.snapshots, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
         };
         const snapshots = snaps
             ? snaps.map(snap => toSnap(snap))

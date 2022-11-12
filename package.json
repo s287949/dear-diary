@@ -10,12 +10,12 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:dear-diary.helloWorld",
 		"onView:new-snapshots",
 		"onView:snapshots",
 		"onView:files",
 		"onView:commmand-line-scripts",
-		"onView:dependencies"
+		"onView:dependencies",
+		"onView:comment"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -67,12 +67,12 @@
 				{
 					"type": "webview",
 					"id": "new-snapshots",
-					"name": "New Snapshot",
-					"contextualTitle": "New Snapshots"
+					"name": "New Diary",
+					"contextualTitle": "New Diary"
 				},
 				{
 					"id": "snapshots",
-					"name": "Snapshots"
+					"name": "Diaries"
 				},
 				{
 					"id": "files",
@@ -136,6 +136,7 @@
 		"glob": "^8.0.3",
 		"mocha": "^10.0.0",
 		"typescript": "^4.7.4",
-		"@vscode/test-electron": "^2.1.5"
+		"@vscode/test-electron": "^2.1.5",
+		"@types/vscode-webview": "^1.57.0"
 	}
 }

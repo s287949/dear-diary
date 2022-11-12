@@ -33,7 +33,7 @@ class DepNodeProvider {
         const toDep = (module, version) => {
             return new DependencyItem(module, version, vscode.TreeItemCollapsibleState.None);
         };
-        const ds = this.deps.map(dep => toDep(dep.module, dep.version));
+        const ds = this.deps ? this.deps.map(dep => toDep(dep.moduleOrCommand, dep.versionOrOutput)) : [];
         return ds;
     }
 }
