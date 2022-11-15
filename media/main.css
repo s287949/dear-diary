@@ -80,10 +80,6 @@ body {
 	background: var(--vscode-button-secondaryHoverBackground);
 }
 
-.input-box {
-	height: 300px;
-}
-
 .ghost {
 	display: none;
 }

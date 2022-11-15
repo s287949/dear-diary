@@ -87,7 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const commentProvider = new CommentViewProvider(context.extensionUri);
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
 	vscode.commands.registerCommand('dear-diary.comment', () => {
-		vscode.commands.executeCommand('workbench.action.togglePanel');
+		vscode.commands.executeCommand('comment.focus');
 	});
 
 	//New code snapshot command impelementation
@@ -441,7 +441,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 	private _view?: vscode.WebviewView;
 
 	constructor(
-		private readonly _extensionUri: vscode.Uri
+		private readonly _extensionUri: vscode.Uri,
 	) { }
 
 	public resolveWebviewView(
@@ -464,11 +464,11 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 		webviewView.webview.onDidReceiveMessage(data => {
 			switch (data.type) {
-				case 'edited':
+				case 'try':
 					{
-						
+						console.log("funziona");
 						break;
-					}
+					};
 			}
 		});
 	}
@@ -485,7 +485,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 		// Use a nonce to only allow a specific script to be run.
 		const nonce = getNonce();
 
-		const p = "prova";
+		const p = `prova\n\tprova\n2\n3\n5`;
 
 		return `<!DOCTYPE html>
 			<html lang="en">
@@ -504,9 +504,32 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				<link href="${styleVSCodeUri}" rel="stylesheet">
 				<link href="${styleMainUri}" rel="stylesheet">
 				
-				<title>Comments</title>
+				<title>Comment</title>
 			</head>
 			<body>
+				<div id="card" class="card">
+					<div class="container">
+						<p class="text-box">`+p+`</p>
+					</div>
+				</div>
+
+				<form id="comment-box">
+				</form>
+
+				<div class="buttons-row">				
+					<button id="cancelbtn" class="ghost">Cancel</button>
+					<button id="editbtn" class="edit-comment-button">Edit</button>
+					<button id="savebtn" class="ghost">Save</button>
+				</div>
+				
+				<script nonce="${nonce}" src="${scriptUri}"></script>
+			</body>
+			</html>`;
+	}
+}
+
+/*
+
 				<div id="card" class="card">
 					<div class="container">
 						<p class="text-box"></p>
@@ -521,13 +544,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 					<button id="editbtn" class="edit-comment-button">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
 				</div>
-				
-
-				<script nonce="${nonce}" src="${scriptUri}"></script>
-			</body>
-			</html>`;
-	}
-}
+*/
 
 function getNonce() {
 	let text = '';

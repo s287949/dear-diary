@@ -7,49 +7,38 @@
     const vscode = acquireVsCodeApi();
 
     document.querySelector('#editbtn').addEventListener('click', () => {
-        const frm = document.querySelector('.edit-comment-button');
-        if(frm)
-            frm.className="ghost";
-        
-        //editComment();
+        editComment();
     });
 
     // Handle messages sent from the extension to the webview
     /*window.addEventListener('message', event => {
         const message = event.data; // The json data that the extension sent
         switch (message.type) {
-            case 'addColor':
+            case 'newSnapshot':
                 {
-                    addColor();
                     break;
                 }
-            case 'clearColors':
-                {
-                    colors = [];
-                    updateColorList(colors);
-                    break;
-                }
-
         }
     });*/
 
-    
     function editComment() {
         //card disappears
         const crd = document.querySelector('.card');
         crd.className = "ghost";
 
-        const frm = document.querySelector('.addComment');
-        const input = document.createElement('input');
-        input.type="text";
-        input.className = "input-box";
+        //input text box for editing the comment appears
+        const frm = document.querySelector('#comment-box');
+        const input = document.createElement('textarea');
+        input.rows=10;
         frm?.appendChild(input);
 
-        /*const editButton = document.querySelector('#editbtn');
+        //edit button disappears and save and cancel buttons appear
+        const editButton = document.querySelector('#editbtn');
         const saveButton = document.querySelector('#savebtn');
         const cancelButton = document.querySelector('#cancelbtn');
         cancelButton.className = "cancel-button";
-        editButton.className = "ghost";*/
+        editButton.className = "ghost";
+        saveButton.className = "edit-comment-button";
 
         /*saveButton.addEventListener('click', () => {
             editButton?.className = "edit-comment-button";
@@ -59,4 +48,6 @@
         });*/
 
     }
-});
+}());
+
+

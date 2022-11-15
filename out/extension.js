@@ -81,7 +81,7 @@ function activate(context) {
     const commentProvider = new CommentViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
     vscode.commands.registerCommand('dear-diary.comment', () => {
-        vscode.commands.executeCommand('workbench.action.togglePanel');
+        vscode.commands.executeCommand('comment.focus');
     });
     //New code snapshot command impelementation
     const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
@@ -391,10 +391,12 @@ class CommentViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
-                case 'edited':
+                case 'try':
                     {
+                        console.log("funziona");
                         break;
                     }
+                    ;
             }
         });
     }
@@ -407,7 +409,7 @@ class CommentViewProvider {
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
-        const p = "prova";
+        const p = `prova\n\tprova\n2\n3\n5`;
         return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -425,31 +427,47 @@ class CommentViewProvider {
 				<link href="${styleVSCodeUri}" rel="stylesheet">
 				<link href="${styleMainUri}" rel="stylesheet">
 				
-				<title>Comments</title>
+				<title>Comment</title>
 			</head>
 			<body>
 				<div id="card" class="card">
 					<div class="container">
-						<p class="text-box"></p>
+						<p class="text-box">` + p + `</p>
 					</div>
 				</div>
 
-				<form class="addComment">
+				<form id="comment-box">
 				</form>
-				
+
 				<div class="buttons-row">				
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="edit-comment-button">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
 				</div>
 				
-
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
     }
 }
 CommentViewProvider.viewType = 'comment';
+/*
+
+                <div id="card" class="card">
+                    <div class="container">
+                        <p class="text-box"></p>
+                    </div>
+                </div>
+
+                <form class="addComment">
+                </form>
+                
+                <div class="buttons-row">
+                    <button id="cancelbtn" class="ghost">Cancel</button>
+                    <button id="editbtn" class="edit-comment-button">Edit</button>
+                    <button id="savebtn" class="ghost">Save</button>
+                </div>
+*/
 function getNonce() {
     let text = '';
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
