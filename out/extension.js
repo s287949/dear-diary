@@ -33,16 +33,16 @@ function activate(context) {
     vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
     vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
     //Open file showing code snapshotted
-    vscode.commands.registerCommand('extension.openPhase', (snap, diary) => {
+    vscode.commands.registerCommand('extension.openSnapshot', (snap, diary) => {
         const nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies);
         vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
         const nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(snap.scripts);
         vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
         const nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
-        var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary + "\\" + "phase code.txt");
+        var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary + "\\" + "code snapshot.txt");
         vscode.workspace.onDidOpenTextDocument((a) => {
-            let fn = snap.title ? "C:\\" + diary + "\\" + snap.title + ".txt" : "C:\\" + diary + "\\" + "phase code.txt";
+            let fn = snap.title ? "C:\\" + diary + "\\" + snap.title + ".txt" : "C:\\" + diary + "\\" + "code snapshot.txt";
             if (a.fileName === fn) {
                 vscode.window.showTextDocument(a, 1, false).then(e => {
                     e.edit(edit => {
@@ -56,7 +56,7 @@ function activate(context) {
             console.error(error);
             debugger;
         });
-        commentProvider.setComment(snap.comment);
+        commentProvider.setComment(snap);
     });
     //Open file showing the command line script and the output
     vscode.commands.registerCommand('extension.openScript', script => {
@@ -75,6 +75,9 @@ function activate(context) {
             console.error(error);
             debugger;
         });
+    });
+    vscode.commands.registerCommand('extension.saveChanges', script => {
+        context.globalState.update("snaps", snaps);
     });
     //Comment webview implementation
     const commentProvider = new CommentViewProvider(context.extensionUri);
@@ -377,6 +380,8 @@ NewSnapshotsViewProvider.viewType = 'new-snapshots';
 class CommentViewProvider {
     constructor(_extensionUri) {
         this._extensionUri = _extensionUri;
+        this.snap = new Snapshot_1.Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], []);
+        this.snapSelected = false;
     }
     resolveWebviewView(webviewView, context, _token) {
         this._view = webviewView;
@@ -390,17 +395,21 @@ class CommentViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
-                case 'try':
+                case 'saveComment':
                     {
+                        this.snap.comment = data.value;
+                        vscode.commands.executeCommand("extension.saveChanges");
                         break;
                     }
                     ;
             }
         });
     }
-    setComment(c) {
+    setComment(s) {
+        this.snap = s;
+        this.snapSelected = true;
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', comment: c });
+            this._view.webview.postMessage({ type: 'comment', comment: s.comment });
         }
     }
     _getHtmlForWebview(webview) {
@@ -434,7 +443,7 @@ class CommentViewProvider {
 			<body>
 				<div id="card" class="card">
 					<div class="container">
-						<pre class="text-box"></pre>
+						<pre class="text-box">Select a snapshot to view and edit the comment</pre>
 					</div>
 				</div>
 
@@ -443,7 +452,7 @@ class CommentViewProvider {
 
 				<div class="buttons-row">				
 					<button id="cancelbtn" class="ghost">Cancel</button>
-					<button id="editbtn" class="edit-comment-button">Edit</button>
+					<button id="editbtn" class="ghost">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
 				</div>
 				
@@ -453,23 +462,6 @@ class CommentViewProvider {
     }
 }
 CommentViewProvider.viewType = 'comment';
-/*
-
-                <div id="card" class="card">
-                    <div class="container">
-                        <p class="text-box"></p>
-                    </div>
-                </div>
-
-                <form class="addComment">
-                </form>
-                
-                <div class="buttons-row">
-                    <button id="cancelbtn" class="ghost">Cancel</button>
-                    <button id="editbtn" class="edit-comment-button">Edit</button>
-                    <button id="savebtn" class="ghost">Save</button>
-                </div>
-*/
 function getNonce() {
     let text = '';
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

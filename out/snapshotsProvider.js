@@ -44,7 +44,7 @@ class SnapshotsProvider {
         }
         const toPhase = (phase, index) => {
             return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
-                command: 'extension.openPhase',
+                command: 'extension.openSnapshot',
                 title: '',
                 arguments: [phase, snap]
             });

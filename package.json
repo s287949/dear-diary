@@ -39,11 +39,6 @@
 				"command": "dear-diary.comment",
 				"title": "Add a comment",
 				"icon": "$(comment)"
-			},
-			{
-				"command": "dear-diary.newComment",
-				"title": "Create comment",
-				"enablement": "!commentIsEmpty"
 			}
 		],
 		"viewsContainers": {

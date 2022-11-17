@@ -10,6 +10,8 @@
         editComment();
     });
 
+    let comment="";
+
     // Handle messages sent from the extension to the webview
     window.addEventListener('message', event => {
         const message = event.data; // The json data that the extension sent
@@ -17,7 +19,15 @@
             case 'comment':
                 {
                     const com = document.querySelector('.text-box');
-                    com.textContent=message.comment;
+                    if(message.comment!==""){
+                        com.textContent = message.comment;
+                        comment = message.comment;
+                    }
+                    else {
+                        com.textContent = "";
+                    }
+                    
+                    document.querySelector('#editbtn').className = "edit-comment-button"; 
                     break;
                 }
         }
@@ -32,7 +42,12 @@
         const frm = document.querySelector('#comment-box');
         const input = document.createElement('textarea');
         input.rows=10;
+        input.textContent = comment;
         frm?.appendChild(input);
+        input.addEventListener('change', (e) => {
+            const value = e.target.value;
+            comment = value;
+        });
 
         //edit button disappears and save and cancel buttons appear
         const editButton = document.querySelector('#editbtn');
@@ -42,13 +57,33 @@
         editButton.className = "ghost";
         saveButton.className = "edit-comment-button";
 
-        /*saveButton.addEventListener('click', () => {
-            editButton?.className = "edit-comment-button";
-            cancelButton?.className = "ghost";
-            crd?.className = "card";
-            input.className = "ghost";
-        });*/
+        cancelButton.addEventListener('click', () => {
+            cancelComment(editButton, cancelButton, saveButton, crd, input);
+        });
 
+        saveButton.addEventListener('click', () => {
+            saveComment(editButton, cancelButton, saveButton, crd, input);
+        });
+
+    }
+
+    function cancelComment(editB, cancelB, saveB, c, inp){
+        editB.className = "edit-comment-button";
+        cancelB.className = "ghost";
+        saveB.className = "ghost";
+        c.className = "card";
+        inp.className = "ghost";
+    }
+
+    function saveComment(editB, cancelB, saveB, c, inp){
+        vscode.postMessage({ type: 'saveComment', value: comment });
+        const com = document.querySelector('.text-box');
+        com.textContent = comment;
+        editB.className = "edit-comment-button";
+        cancelB.className = "ghost";
+        saveB.className = "ghost";
+        c.className = "card";
+        inp.className = "ghost";
     }
 }());
 

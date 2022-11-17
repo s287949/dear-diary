@@ -56,7 +56,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		
 		const toPhase = (phase: Snapshot, index:number): PhaseItem => {
 			return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
-				command: 'extension.openPhase',
+				command: 'extension.openSnapshot',
 				title: '',
 				arguments: [phase, snap]
 			});
