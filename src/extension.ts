@@ -36,20 +36,20 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
 	vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
 	//Open file showing code snapshotted
-	vscode.commands.registerCommand('extension.openPhase', (phase, snap) => {
-		const nodeDependenciesProvider = new DepNodeProvider(phase.dependencies!);
+	vscode.commands.registerCommand('extension.openPhase', (snap, diary) => {
+		const nodeDependenciesProvider = new DepNodeProvider(snap.dependencies!);
 		vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
-		const nodeScriptsProvider = new ScriptsProvider(phase.scripts!);
+		const nodeScriptsProvider = new ScriptsProvider(snap.scripts!);
 		vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
-		const nodeFilesProvider = new FilesNodeProvider(phase.files!);
+		const nodeFilesProvider = new FilesNodeProvider(snap.files!);
 		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
-		var setting: vscode.Uri = vscode.Uri.parse(phase.title ? "untitled:" + "C:\\" + snap + "\\" + phase.title + ".txt" : "untitled:" + "C:\\" + snap + "\\" + "phase code.txt");
+		var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary + "\\" + "phase code.txt");
 		vscode.workspace.onDidOpenTextDocument((a) => {
-			let fn = phase.title ? "C:\\" + snap + "\\" + phase.title + ".txt" : "C:\\" + snap + "\\" + "phase code.txt";
+			let fn = snap.title ? "C:\\" + diary + "\\" + snap.title + ".txt" : "C:\\" + diary + "\\" + "phase code.txt";
 			if (a.fileName === fn) {
 				vscode.window.showTextDocument(a, 1, false).then(e => {
 					e.edit(edit => {
-						edit.insert(new vscode.Position(0, 0), phase.code);
+						edit.insert(new vscode.Position(0, 0), snap.code);
 					});
 				});
 			}
@@ -60,8 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error(error);
 			debugger;
 		});
-		//const vscodeAPI = acquireVsCodeApi();
-		//vscodeAPI.setState({activePhase: phase});
+		commentProvider.setComment(snap.comment);
 	});
 	//Open file showing the command line script and the output
 	vscode.commands.registerCommand('extension.openScript', script => {
@@ -466,11 +465,16 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 			switch (data.type) {
 				case 'try':
 					{
-						console.log("funziona");
 						break;
 					};
 			}
 		});
+	}
+
+	public setComment(c:string){
+		if (this._view) {
+			this._view.webview.postMessage({ type: 'comment', comment: c });
+		}
 	}
 
 	private _getHtmlForWebview(webview: vscode.Webview) {
@@ -484,8 +488,6 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 		// Use a nonce to only allow a specific script to be run.
 		const nonce = getNonce();
-
-		const p = `prova\n\tprova\n2\n3\n5`;
 
 		return `<!DOCTYPE html>
 			<html lang="en">
@@ -509,7 +511,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 			<body>
 				<div id="card" class="card">
 					<div class="container">
-						<p class="text-box">`+p+`</p>
+						<pre class="text-box"></pre>
 					</div>
 				</div>
 

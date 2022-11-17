@@ -11,15 +11,17 @@
     });
 
     // Handle messages sent from the extension to the webview
-    /*window.addEventListener('message', event => {
+    window.addEventListener('message', event => {
         const message = event.data; // The json data that the extension sent
         switch (message.type) {
-            case 'newSnapshot':
+            case 'comment':
                 {
+                    const com = document.querySelector('.text-box');
+                    com.textContent=message.comment;
                     break;
                 }
         }
-    });*/
+    });
 
     function editComment() {
         //card disappears
