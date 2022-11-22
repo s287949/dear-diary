@@ -11,6 +11,7 @@ import { Diary, Snapshot, FSInstance, Resource } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
 import * as fs from 'fs';
 import * as path from 'path';
+import { resolve } from 'path';
 
 
 /*
@@ -91,6 +92,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
 	vscode.commands.registerCommand('dear-diary.comment', () => {
 		vscode.commands.executeCommand('comment.focus');
+	});
+
+	vscode.commands.registerCommand('dear-diary.new-terminal', (nt: vscode.Terminal, command: string) => {
+		nt.sendText(command);
+		nt.show();
+		
 	});
 
 	//New code snapshot command impelementation
@@ -175,8 +182,8 @@ export function activate(context: vscode.ExtensionContext) {
 									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
 								}
 								else if (t === 3) {
-
-
+									executeCommandInShell("help");
+									return;
 								}
 
 								//updating the system array of snapshots
@@ -443,8 +450,8 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 	private _view?: vscode.WebviewView;
 
-	private snap:Snapshot = new Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], []);
-	private snapSelected:boolean = false;
+	private snap: Snapshot = new Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], []);
+	private snapSelected: boolean = false;
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -480,7 +487,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 		});
 	}
 
-	public setComment(s:Snapshot){
+	public setComment(s: Snapshot) {
 		this.snap = s;
 		this.snapSelected = true;
 
@@ -550,6 +557,34 @@ function getNonce() {
 	}
 	return text;
 }
+
+function executeCommandInShell(command: string) {
+	let newTerminal: vscode.Terminal;
+	let newCommit;
+	let options: vscode.TerminalOptions;
+	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+	options = {
+		cwd: rootPath,
+		name: "Dear Diary"
+	};
+
+	newTerminal = vscode.window.createTerminal(options);
+
+	vscode.commands.executeCommand('dear-diary.new-terminal', newTerminal, command).then(() => {
+		vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
+			vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
+				vscode.env.clipboard.readText().then((text) => {
+					console.log("prova:\n" + text);
+					newTerminal.dispose();
+				});
+			});
+		});
+	});
+
+
+};
+
 
 // this method is called when your extension is deactivated
 export function deactivate() { }

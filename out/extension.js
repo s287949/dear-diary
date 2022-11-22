@@ -85,6 +85,10 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.comment', () => {
         vscode.commands.executeCommand('comment.focus');
     });
+    vscode.commands.registerCommand('dear-diary.new-terminal', (nt, command) => {
+        nt.sendText(command);
+        nt.show();
+    });
     //New code snapshot command impelementation
     const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
@@ -156,6 +160,8 @@ function activate(context) {
                                     snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "file"));
                                 }
                                 else if (t === 3) {
+                                    executeCommandInShell("help");
+                                    return;
                                 }
                                 //updating the system array of snapshots
                                 context.globalState.update("snaps", snaps);
@@ -470,6 +476,29 @@ function getNonce() {
     }
     return text;
 }
+function executeCommandInShell(command) {
+    let newTerminal;
+    let newCommit;
+    let options;
+    const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+        ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+    options = {
+        cwd: rootPath,
+        name: "Dear Diary"
+    };
+    newTerminal = vscode.window.createTerminal(options);
+    vscode.commands.executeCommand('dear-diary.new-terminal', newTerminal, command).then(() => {
+        vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
+            vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
+                vscode.env.clipboard.readText().then((text) => {
+                    console.log("prova:\n" + text);
+                    newTerminal.dispose();
+                });
+            });
+        });
+    });
+}
+;
 // this method is called when your extension is deactivated
 function deactivate() { }
 exports.deactivate = deactivate;
