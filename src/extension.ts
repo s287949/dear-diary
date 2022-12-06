@@ -102,29 +102,34 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.executeCommand('comment.focus');
 	});
 
-	vscode.commands.registerCommand('dear-diary.new-terminal', async (type: number) => {
-		let newTerminal: vscode.Terminal;
-		let options: vscode.TerminalOptions;
+	vscode.commands.registerCommand('dear-diary.new-terminal', async (type: number, snapNo: number) => {
 		let command: string = "";
 		const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 			? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+
+		/*let newTerminal: vscode.Terminal;
+		let options: vscode.TerminalOptions;
 		options = {
 			cwd: rootPath,
 			name: "Dear Diary",
-			hideFromUser: true
+			hideFromUser: false
 		};
 
 		newTerminal = vscode.window.createTerminal(options);
+		newTerminal.show();*/
 
 		if (type === 1) {
 			command = "git init " + rootPath;
-			const output = await execShell(command);
+			let output = await execShell(command);
+			command = "cd "+rootPath+" && git add .";
+			output = await execShell(command);
+			command = "cd "+rootPath+" && git commit -m \""+snapNo+"\"";
+			output = await execShell(command);
 			vscode.window.showInformationMessage(output);
 		}
 		else if (type === 2) {
 			command = "git commit";
 		}
-
 	});
 
 	//New code snapshot command impelementation
@@ -209,7 +214,7 @@ export function activate(context: vscode.ExtensionContext) {
 									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
 								}
 								else if (t === 3) {
-									vscode.commands.executeCommand('dear-diary.new-terminal', 1);
+									vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1);
 								}
 
 								//updating the system array of snapshots
@@ -583,31 +588,6 @@ function getNonce() {
 	}
 	return text;
 }
-
-/*function executeCommandInShell(commit: string, message: string, type: number) {
-	let newTerminal: vscode.Terminal;
-	let options: vscode.TerminalOptions;
-	let command: string = "";
-	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
-		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-	options = {
-		cwd: rootPath,
-		name: "Dear Diary",
-		hideFromUser: true
-	};
-
-	newTerminal = vscode.window.createTerminal(options);
-
-	if (type === 1) {
-		command = "git init " + rootPath;
-	}
-	else if (type === 2) {
-		command = "git commit";
-	}
-
-	vscode.commands.executeCommand('dear-diary.new-terminal', command, type);
-};
-*/
 
 const execShell = (cmd: string) =>
 	new Promise<string>((resolve, reject) => {
