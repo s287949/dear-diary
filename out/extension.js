@@ -94,32 +94,29 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.comment', () => {
         vscode.commands.executeCommand('comment.focus');
     });
-    vscode.commands.registerCommand('dear-diary.new-terminal', async (type, snapNo) => {
+    vscode.commands.registerCommand('dear-diary.new-terminal', async (type, snapNo, ns) => {
         let command = "";
         const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
             ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-        /*let newTerminal: vscode.Terminal;
-        let options: vscode.TerminalOptions;
-        options = {
-            cwd: rootPath,
-            name: "Dear Diary",
-            hideFromUser: false
+        let output;
+        let check = (o) => {
+            if (o === "error") {
+                return true;
+            }
+            return false;
         };
-
-        newTerminal = vscode.window.createTerminal(options);
-        newTerminal.show();*/
         if (type === 1) {
-            command = "git init " + rootPath;
-            let output = await execShell(command);
-            command = "cd " + rootPath + " && git add .";
+            command = "cd " + rootPath + " && mkdir .diarygit && cd .diarygit && git init";
             output = await execShell(command);
-            command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
-            output = await execShell(command);
-            vscode.window.showInformationMessage(output);
+            if (check(output)) {
+                return;
+            }
         }
-        else if (type === 2) {
-            command = "git commit";
-        }
+        command = "cd " + rootPath + " && git --git-dir=.diarygit add .";
+        output = await execShell(command);
+        command = "cd " + rootPath + " && git --git-dir=.diarygit commit -m \"" + snapNo + "\"";
+        output = await execShell(command);
+        ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
     });
     //New code snapshot command impelementation
     const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
@@ -131,31 +128,30 @@ function activate(context) {
                     vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
                         const qis = await (0, multiStepInputNewSnapshot_1.newCodeSnapshot)(context);
                         let fileTree = [];
-                        const t = type;
                         const editor = vscode.window.activeTextEditor;
                         let code;
                         if (editor) {
                             const document = editor.document;
-                            if (t === 1) {
+                            if (type === 1) {
                                 const selection = editor.selection;
                                 code = document.getText(selection);
                             }
-                            else if (t === 2) {
+                            else if (type === 2) {
                                 code = document.getText();
                             }
-                            else if (t !== 3) {
+                            else if (type !== 3) {
                                 vscode.window.showErrorMessage("Error: Snapshot type not valid");
                                 return;
                             }
                             let fileName = document.fileName;
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, t);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, type);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
                                 return;
                             }
-                            if (!code && t !== 3) {
+                            if (!code && type !== 3) {
                                 vscode.window.showErrorMessage("Error: No code selected for the snapshot");
                             }
                             else {
@@ -171,7 +167,7 @@ function activate(context) {
                                 let scripts = [];
                                 const terminals = vscode.window.terminals;
                                 if (terminals.length <= 0) {
-                                    vscode.window.showWarningMessage('No terminals found, cannot run copy');
+                                    vscode.window.showWarningMessage('No terminals found, cannot create new Diary');
                                     return;
                                 }
                                 await vscode.env.clipboard.readText().then((text) => {
@@ -185,16 +181,15 @@ function activate(context) {
                                     });
                                 });
                                 //creating snapshot and adding it to the array of snapshots
-                                if (t === 1) {
+                                if (type === 1 || type === 2) {
                                     snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "code"));
                                 }
-                                else if (t === 2) {
-                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "file"));
+                                else if (type === 3) {
+                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+                                    vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [ns], "project"));
                                 }
-                                else if (t === 3) {
-                                    vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1);
-                                }
-                                //updating the system array of snapshots
+                                //updating the system array of diaries
                                 context.globalState.update("snaps", snaps);
                                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
                             }
@@ -214,26 +209,43 @@ function activate(context) {
                     vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
                         const qis = await (0, multiStepInputNewPhase_1.newCodePhase)(context);
                         let fileTree = [];
-                        let t = 0;
+                        let type = 0;
+                        switch (node.type) {
+                            case "code":
+                                type = 1;
+                                break;
+                            case "file":
+                                type = 2;
+                                break;
+                            case "project":
+                                type = 3;
+                                break;
+                        }
                         const editor = vscode.window.activeTextEditor;
                         let code;
                         if (editor) {
                             const document = editor.document;
-                            const selection = editor.selection;
-                            code = document.getText(selection);
+                            if (type === 1) {
+                                const selection = editor.selection;
+                                code = document.getText(selection);
+                            }
+                            else if (type === 2) {
+                                code = document.getText();
+                            }
+                            else if (type !== 3) {
+                                vscode.window.showErrorMessage("Error: Snapshot type not valid");
+                                return;
+                            }
                             let fileName = document.fileName;
                             if (rootPath) {
-                                if (node.type === "project") {
-                                    t = 3;
-                                }
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, t);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, type);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
                                 return;
                             }
-                            if (!code) {
-                                vscode.window.showErrorMessage("Error: No code selected for the new phase");
+                            if (!code && type !== 3) {
+                                vscode.window.showErrorMessage("Error: No code selected for the new snapshot");
                             }
                             else {
                                 let deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
@@ -241,22 +253,31 @@ function activate(context) {
                                 let scripts = [];
                                 const terminals = vscode.window.terminals;
                                 if (terminals.length <= 0) {
-                                    vscode.window.showWarningMessage('No terminals found, cannot run copy');
+                                    vscode.window.showWarningMessage('No terminals found, cannot create new snapshot');
                                     return;
                                 }
                                 await vscode.env.clipboard.readText().then((text) => {
                                     let scrts = text.split(new RegExp(/PS C:\\.*>/));
                                     scrts.shift();
                                     scrts.forEach((i) => {
-                                        let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
-                                        if (s) {
+                                        let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
+                                        if (s && s.trim() !== '') {
                                             scripts.push(new Snapshot_1.Resource(s.split("\r\n")[0], s, "script"));
                                         }
                                     });
                                 });
                                 //create new phase and push it to the relative snapshot
                                 node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps));
-                                //update system snapshots array
+                                //creating snapshot and adding it to the array of snapshots
+                                if (type === 1 || type === 2) {
+                                    node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps));
+                                }
+                                else if (type === 3) {
+                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+                                    vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+                                    node.ref.snapshots.push(ns);
+                                }
+                                //update snapshot array of relative diary and updating system diary array
                                 context.globalState.update("snaps", snaps);
                                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
                             }

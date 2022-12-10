@@ -22,7 +22,7 @@
 		"commands": [
 			{
 				"command": "dear-diary.new-code-snapshot",
-				"title": "New Code Snapshot",
+				"title": "New Diary",
 				"category": "Dear Diary"
 			},
 			{
@@ -32,7 +32,7 @@
 			},
 			{
 				"command": "dear-diary.newPhase",
-				"title": "Add new Phase",
+				"title": "Add new Snapshot",
 				"icon": "$(add)"
 			},
 			{

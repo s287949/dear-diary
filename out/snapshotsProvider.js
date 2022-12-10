@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SnapshotItem = exports.SnapshotsProvider = void 0;
+exports.DiaryItem = exports.SnapshotsProvider = void 0;
 const vscode = require("vscode");
 const path = require("path");
 class SnapshotsProvider {
@@ -16,10 +16,10 @@ class SnapshotsProvider {
         return element;
     }
     getChildren(element) {
-        if (element instanceof SnapshotItem) {
+        if (element instanceof DiaryItem) {
             return Promise.resolve(this.getPhases(element.phases, element.title));
         }
-        else if (element instanceof PhaseItem) {
+        else if (element instanceof SnapshotItem) {
             return Promise.resolve([]);
         }
         else {
@@ -31,7 +31,7 @@ class SnapshotsProvider {
             return [];
         }
         const toSnap = (snap) => {
-            return new SnapshotItem(snap, snap.title, snap.snapshots, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
+            return new DiaryItem(snap, snap.title, snap.snapshots, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
         };
         const snapshots = snaps
             ? snaps.map(snap => toSnap(snap))
@@ -43,7 +43,7 @@ class SnapshotsProvider {
             return [];
         }
         const toPhase = (phase, index) => {
-            return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
+            return new SnapshotItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
                 command: 'extension.openSnapshot',
                 title: '',
                 arguments: [phase, snap]
@@ -56,7 +56,7 @@ class SnapshotsProvider {
     }
 }
 exports.SnapshotsProvider = SnapshotsProvider;
-class SnapshotItem extends vscode.TreeItem {
+class DiaryItem extends vscode.TreeItem {
     constructor(ref, title, phases, type, collapsibleState) {
         super(title, collapsibleState);
         this.ref = ref;
@@ -68,7 +68,7 @@ class SnapshotItem extends vscode.TreeItem {
         this.contextValue = "snapshot";
     }
 }
-exports.SnapshotItem = SnapshotItem;
+exports.DiaryItem = DiaryItem;
 function checkType(type) {
     if (type === "code") {
         return {
@@ -89,7 +89,7 @@ function checkType(type) {
         };
     }
 }
-class PhaseItem extends vscode.TreeItem {
+class SnapshotItem extends vscode.TreeItem {
     constructor(title, code, comment, phaseno, collapsibleState, command) {
         super(title, collapsibleState);
         this.title = title;

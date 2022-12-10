@@ -3,9 +3,9 @@ import * as path from 'path';
 import { Diary, Snapshot } from './Snapshot';
 
 
-export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem | PhaseItem> {
-	private _onDidChangeTreeData: vscode.EventEmitter<SnapshotItem | PhaseItem | undefined | void> = new vscode.EventEmitter<SnapshotItem | PhaseItem | undefined | void>();
-	readonly onDidChangeTreeData: vscode.Event<SnapshotItem | PhaseItem | undefined | void> = this._onDidChangeTreeData.event;
+export class SnapshotsProvider implements vscode.TreeDataProvider<DiaryItem | SnapshotItem> {
+	private _onDidChangeTreeData: vscode.EventEmitter<DiaryItem | SnapshotItem | undefined | void> = new vscode.EventEmitter<DiaryItem | SnapshotItem | undefined | void>();
+	readonly onDidChangeTreeData: vscode.Event<DiaryItem | SnapshotItem | undefined | void> = this._onDidChangeTreeData.event;
 
 	constructor(private context: vscode.ExtensionContext) { }
 
@@ -13,17 +13,17 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		this._onDidChangeTreeData.fire();
 	}
 
-	getTreeItem(element: SnapshotItem | PhaseItem): vscode.TreeItem {
+	getTreeItem(element: DiaryItem | SnapshotItem): vscode.TreeItem {
 		return element;
 	}
 
-	getChildren(element?: SnapshotItem | PhaseItem): Thenable<SnapshotItem[] | PhaseItem[]> {
-		if (element instanceof SnapshotItem) {
+	getChildren(element?: DiaryItem | SnapshotItem): Thenable<DiaryItem[] | SnapshotItem[]> {
+		if (element instanceof DiaryItem) {
 			return Promise.resolve(
 				this.getPhases(element.phases, element.title)
 			);
 		} 
-		else if(element instanceof PhaseItem) {
+		else if(element instanceof SnapshotItem) {
 			return Promise.resolve([]);
 		}
 		else {
@@ -33,13 +33,13 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		}
 	}
 	
-	private getSnapshots(snaps: Diary[] | undefined): SnapshotItem[] {
+	private getSnapshots(snaps: Diary[] | undefined): DiaryItem[] {
 		if(!snaps){
 			return [];
 		}
 		
-		const toSnap = (snap: Diary): SnapshotItem => {
-			return new SnapshotItem(snap, snap.title, snap.snapshots, snap.type,vscode.TreeItemCollapsibleState.Collapsed);
+		const toSnap = (snap: Diary): DiaryItem => {
+			return new DiaryItem(snap, snap.title, snap.snapshots, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
 		};
 
 		const snapshots = snaps
@@ -49,13 +49,13 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 		return snapshots;
 	}
 
-	private getPhases(phases: Snapshot[] | undefined, snap: string): PhaseItem[] {
+	private getPhases(phases: Snapshot[] | undefined, snap: string): SnapshotItem[] {
 		if(!phases){
 			return [];
 		}
 		
-		const toPhase = (phase: Snapshot, index:number): PhaseItem => {
-			return new PhaseItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
+		const toPhase = (phase: Snapshot, index:number): SnapshotItem => {
+			return new SnapshotItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openSnapshot',
 				title: '',
 				arguments: [phase, snap]
@@ -70,7 +70,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<SnapshotItem |
 	}
 }
 
-export class SnapshotItem extends vscode.TreeItem {
+export class DiaryItem extends vscode.TreeItem {
 	constructor(
 		public ref: Diary,
 		public readonly title: string,
@@ -106,7 +106,7 @@ function checkType(type: string) {
 	}
 }
 
-class PhaseItem extends vscode.TreeItem {
+class SnapshotItem extends vscode.TreeItem {
 	constructor(
 		public readonly title: string,
 		private code: string,

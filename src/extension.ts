@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { newCodeSnapshot } from './multiStepInputNewSnapshot';
 import { newCodePhase } from './multiStepInputNewPhase';
 import { DepNodeProvider } from './dependenciesProvider';
-import { SnapshotsProvider, SnapshotItem } from './snapshotsProvider';
+import { SnapshotsProvider, DiaryItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
 import { ScriptsProvider } from './scriptsProvider';
 import { Diary, Snapshot, FSInstance, Resource } from './Snapshot';
@@ -102,34 +102,31 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.executeCommand('comment.focus');
 	});
 
-	vscode.commands.registerCommand('dear-diary.new-terminal', async (type: number, snapNo: number) => {
+	vscode.commands.registerCommand('dear-diary.new-terminal', async (type: number, snapNo: number, ns:Snapshot) => {
 		let command: string = "";
 		const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 			? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-
-		/*let newTerminal: vscode.Terminal;
-		let options: vscode.TerminalOptions;
-		options = {
-			cwd: rootPath,
-			name: "Dear Diary",
-			hideFromUser: false
-		};
-
-		newTerminal = vscode.window.createTerminal(options);
-		newTerminal.show();*/
+		let output;
+		let check = (o:string) => {
+			if(o==="error"){
+				return true;
+			}
+			return false;
+		}
 
 		if (type === 1) {
-			command = "git init " + rootPath;
-			let output = await execShell(command);
-			command = "cd "+rootPath+" && git add .";
+			command = "cd "+rootPath+" && mkdir .diarygit && cd .diarygit && git init";
 			output = await execShell(command);
-			command = "cd "+rootPath+" && git commit -m \""+snapNo+"\"";
-			output = await execShell(command);
-			vscode.window.showInformationMessage(output);
+			if(check(output)){
+				return;
+			}
 		}
-		else if (type === 2) {
-			command = "git commit";
-		}
+
+		command = "cd "+rootPath+" && git --git-dir=.diarygit add .";
+		output = await execShell(command);
+		command = "cd "+rootPath+" && git --git-dir=.diarygit commit -m \""+snapNo+"\"";
+		output = await execShell(command);
+		ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
 	});
 
 	//New code snapshot command impelementation
@@ -144,20 +141,18 @@ export function activate(context: vscode.ExtensionContext) {
 						const qis = await newCodeSnapshot(context);
 						let fileTree = [];
 
-						const t = type;
-
 						const editor = vscode.window.activeTextEditor;
 						let code;
 						if (editor) {
 							const document = editor.document;
-							if (t === 1) {
+							if (type === 1) {
 								const selection = editor.selection;
 								code = document.getText(selection);
 							}
-							else if (t === 2) {
+							else if (type === 2) {
 								code = document.getText();
 							}
-							else if (t !== 3) {
+							else if (type !== 3) {
 								vscode.window.showErrorMessage("Error: Snapshot type not valid");
 								return;
 							}
@@ -165,14 +160,14 @@ export function activate(context: vscode.ExtensionContext) {
 							let fileName = document.fileName;
 
 							if (rootPath) {
-								fileTree = generateFileTree(rootPath, 0, false, fileName, t);
+								fileTree = generateFileTree(rootPath, 0, false, fileName, type);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
 								return;
 							}
 
-							if (!code && t !== 3) {
+							if (!code && type !== 3) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
@@ -190,7 +185,7 @@ export function activate(context: vscode.ExtensionContext) {
 								let scripts: Resource[] = [];
 								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 								if (terminals.length <= 0) {
-									vscode.window.showWarningMessage('No terminals found, cannot run copy');
+									vscode.window.showWarningMessage('No terminals found, cannot create new Diary');
 									return;
 								}
 								await vscode.env.clipboard.readText().then((text) => {
@@ -198,26 +193,23 @@ export function activate(context: vscode.ExtensionContext) {
 									scrts.shift();
 									scrts.forEach((i) => {
 										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
-
 										if (s && s.trim() !== '') {
 											scripts.push(new Resource(s.split("\r\n")[0], s, "script"));
 										}
 									});
 								});
 
-
 								//creating snapshot and adding it to the array of snapshots
-								if (t === 1) {
+								if (type === 1 || type === 2) {
 									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
 								}
-								else if (t === 2) {
-									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
-								}
-								else if (t === 3) {
-									vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1);
+								else if (type === 3) {
+									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+									vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
+									snaps.push(new Diary(qis.name, [ns], "project"));
 								}
 
-								//updating the system array of snapshots
+								//updating the system array of diaries
 								context.globalState.update("snaps", snaps);
 								vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 							}
@@ -231,39 +223,56 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	}));
 
-	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node: SnapshotItem) => {
+	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node: DiaryItem) => {
 		await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
 			vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
 				vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
 					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
 						const qis = await newCodePhase(context);
 						let fileTree = [];
-						let t = 0;
+						let type = 0;
+
+						switch(node.type){
+							case "code":
+								type =1;
+								break;
+							case "file":
+								type=2;
+								break;
+							case "project":
+								type=3;
+								break;
+						}
 
 
 						const editor = vscode.window.activeTextEditor;
 						let code;
 						if (editor) {
 							const document = editor.document;
-							const selection = editor.selection;
+							if (type === 1) {
+								const selection = editor.selection;
+								code = document.getText(selection);
+							}
+							else if (type === 2) {
+								code = document.getText();
+							}
+							else if (type !== 3) {
+								vscode.window.showErrorMessage("Error: Snapshot type not valid");
+								return;
+							}
 
-							code = document.getText(selection);
 							let fileName = document.fileName;
 
 							if (rootPath) {
-								if (node.type === "project") {
-									t = 3;
-								}
-
-								fileTree = generateFileTree(rootPath, 0, false, fileName, t);
+								fileTree = generateFileTree(rootPath, 0, false, fileName, type);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
 								return;
 							}
 
-							if (!code) {
-								vscode.window.showErrorMessage("Error: No code selected for the new phase");
+							if (!code && type!==3) {
+								vscode.window.showErrorMessage("Error: No code selected for the new snapshot");
 							}
 							else {
 								let deps = getDepsInPackageJson(rootPath);
@@ -272,7 +281,7 @@ export function activate(context: vscode.ExtensionContext) {
 								let scripts: Resource[] = [];
 								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 								if (terminals.length <= 0) {
-									vscode.window.showWarningMessage('No terminals found, cannot run copy');
+									vscode.window.showWarningMessage('No terminals found, cannot create new snapshot');
 									return;
 								}
 
@@ -280,8 +289,8 @@ export function activate(context: vscode.ExtensionContext) {
 									let scrts = text.split(new RegExp(/PS C:\\.*>/));
 									scrts.shift();
 									scrts.forEach((i) => {
-										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "");
-										if (s) {
+										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
+										if (s && s.trim() !== '') {
 											scripts.push(new Resource(s.split("\r\n")[0], s, "script"));
 										}
 									});
@@ -290,7 +299,18 @@ export function activate(context: vscode.ExtensionContext) {
 								//create new phase and push it to the relative snapshot
 								node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps));
 
-								//update system snapshots array
+								//creating snapshot and adding it to the array of snapshots
+								if (type === 1 || type === 2) {
+									node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps));
+								}
+								else if (type === 3) {
+									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+									vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length+1, ns);
+									node.ref.snapshots.push(ns);
+								}
+								
+								
+								//update snapshot array of relative diary and updating system diary array
 								context.globalState.update("snaps", snaps);
 								vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 							}
