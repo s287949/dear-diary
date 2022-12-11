@@ -17,51 +17,51 @@ class SnapshotsProvider {
     }
     getChildren(element) {
         if (element instanceof DiaryItem) {
-            return Promise.resolve(this.getPhases(element.phases, element.title));
+            return Promise.resolve(this.getSnapshots(element.snapshots, element));
         }
         else if (element instanceof SnapshotItem) {
             return Promise.resolve([]);
         }
         else {
-            return Promise.resolve(this.getSnapshots(this.context.globalState.get("snaps")));
+            return Promise.resolve(this.getDiaries(this.context.globalState.get("snaps")));
         }
     }
-    getSnapshots(snaps) {
-        if (!snaps) {
+    getDiaries(diar) {
+        if (!diar) {
             return [];
         }
-        const toSnap = (snap) => {
-            return new DiaryItem(snap, snap.title, snap.snapshots, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
+        const toDiary = (diary) => {
+            return new DiaryItem(diary, diary.title, diary.snapshots, diary.type, vscode.TreeItemCollapsibleState.Collapsed);
         };
-        const snapshots = snaps
-            ? snaps.map(snap => toSnap(snap))
+        const diaries = diar
+            ? diar.map(snap => toDiary(snap))
             : [];
-        return snapshots;
+        return diaries;
     }
-    getPhases(phases, snap) {
-        if (!phases) {
+    getSnapshots(snapshots, diary) {
+        if (!snapshots) {
             return [];
         }
-        const toPhase = (phase, index) => {
-            return new SnapshotItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
+        const toSnapshot = (snap, index) => {
+            return new SnapshotItem(snap.title, snap.code, snap.comment, index, vscode.TreeItemCollapsibleState.None, {
                 command: 'extension.openSnapshot',
                 title: '',
-                arguments: [phase, snap]
+                arguments: [snap, diary]
             });
         };
-        const ps = phases
-            ? phases.map((phase, index) => toPhase(phase, index))
+        const s = snapshots
+            ? snapshots.map((snap, index) => toSnapshot(snap, index))
             : [];
-        return ps;
+        return s;
     }
 }
 exports.SnapshotsProvider = SnapshotsProvider;
 class DiaryItem extends vscode.TreeItem {
-    constructor(ref, title, phases, type, collapsibleState) {
+    constructor(ref, title, snapshots, type, collapsibleState) {
         super(title, collapsibleState);
         this.ref = ref;
         this.title = title;
-        this.phases = phases;
+        this.snapshots = snapshots;
         this.type = type;
         this.collapsibleState = collapsibleState;
         this.iconPath = checkType(this.type);

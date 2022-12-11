@@ -42,29 +42,38 @@ function activate(context) {
     vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
     vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
     //Open file showing code snapshotted
-    vscode.commands.registerCommand('extension.openSnapshot', (snap, diary) => {
+    vscode.commands.registerCommand('extension.openSnapshot', async (snap, diary) => {
         const nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies);
         vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
         const nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(snap.scripts);
         vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
         const nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
-        var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary + "\\" + "code snapshot.txt");
-        vscode.workspace.onDidOpenTextDocument((a) => {
-            let fn = snap.title ? "C:\\" + diary + "\\" + snap.title + ".txt" : "C:\\" + diary + "\\" + "code snapshot.txt";
-            if (a.fileName === fn) {
-                vscode.window.showTextDocument(a, 1, false).then(e => {
-                    e.edit(edit => {
-                        edit.insert(new vscode.Position(0, 0), snap.code);
+        if (diary.type !== "project") {
+            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary + "\\" + "code snapshot.txt");
+            vscode.workspace.onDidOpenTextDocument((a) => {
+                let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + ".txt" : "C:\\" + diary.title + "\\" + "code snapshot.txt";
+                if (a.fileName === fn) {
+                    vscode.window.showTextDocument(a, 1, false).then(e => {
+                        e.edit(edit => {
+                            edit.insert(new vscode.Position(0, 0), snap.code);
+                        });
                     });
-                });
-            }
-        });
-        vscode.workspace.openTextDocument(setting).then((a) => {
-        }, (error) => {
-            console.error(error);
-            debugger;
-        });
+                }
+            });
+            vscode.workspace.openTextDocument(setting).then((a) => {
+            }, (error) => {
+                console.error(error);
+                debugger;
+            });
+        }
+        else {
+            let command = "";
+            let output;
+            command = "cd " + rootPath + " git checkout " + snap.code;
+            output = await execShell(command);
+            vscode.window.showInformationMessage(output);
+        }
         commentProvider.setComment(snap);
     });
     //Open file showing the command line script and the output
@@ -99,22 +108,17 @@ function activate(context) {
         const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
             ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
         let output;
-        let check = (o) => {
-            if (o === "error") {
-                return true;
-            }
-            return false;
-        };
         if (type === 1) {
-            command = "cd " + rootPath + " && mkdir .diarygit && cd .diarygit && git init";
+            command = "cd " + rootPath + " && git init";
             output = await execShell(command);
-            if (check(output)) {
+            if (output === "error") {
+                ns.code = "";
                 return;
             }
         }
-        command = "cd " + rootPath + " && git --git-dir=.diarygit add .";
+        command = "cd " + rootPath + " && git add .";
         output = await execShell(command);
-        command = "cd " + rootPath + " && git --git-dir=.diarygit commit -m \"" + snapNo + "\"";
+        command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
         output = await execShell(command);
         ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
     });
@@ -186,7 +190,11 @@ function activate(context) {
                                 }
                                 else if (type === 3) {
                                     let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-                                    vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
+                                    await vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
+                                    if (ns.code === "") {
+                                        vscode.window.showErrorMessage("Error: Could not create new Project Diary");
+                                        return;
+                                    }
                                     snaps.push(new Snapshot_1.Diary(qis.name, [ns], "project"));
                                 }
                                 //updating the system array of diaries

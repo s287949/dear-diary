@@ -20,7 +20,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<DiaryItem | Sn
 	getChildren(element?: DiaryItem | SnapshotItem): Thenable<DiaryItem[] | SnapshotItem[]> {
 		if (element instanceof DiaryItem) {
 			return Promise.resolve(
-				this.getPhases(element.phases, element.title)
+				this.getSnapshots(element.snapshots, element)
 			);
 		} 
 		else if(element instanceof SnapshotItem) {
@@ -28,45 +28,45 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<DiaryItem | Sn
 		}
 		else {
 			return Promise.resolve(
-				this.getSnapshots(this.context.globalState.get("snaps"))
+				this.getDiaries(this.context.globalState.get("snaps"))
 			);
 		}
 	}
 	
-	private getSnapshots(snaps: Diary[] | undefined): DiaryItem[] {
-		if(!snaps){
+	private getDiaries(diar: Diary[] | undefined): DiaryItem[] {
+		if(!diar){
 			return [];
 		}
 		
-		const toSnap = (snap: Diary): DiaryItem => {
-			return new DiaryItem(snap, snap.title, snap.snapshots, snap.type, vscode.TreeItemCollapsibleState.Collapsed);
+		const toDiary = (diary: Diary): DiaryItem => {
+			return new DiaryItem(diary, diary.title, diary.snapshots, diary.type, vscode.TreeItemCollapsibleState.Collapsed);
 		};
 
-		const snapshots = snaps
-				? snaps.map(snap => toSnap(snap))
+		const diaries = diar
+				? diar.map(snap => toDiary(snap))
 				: [];
 
-		return snapshots;
+		return diaries;
 	}
 
-	private getPhases(phases: Snapshot[] | undefined, snap: string): SnapshotItem[] {
-		if(!phases){
+	private getSnapshots(snapshots: Snapshot[] | undefined, diary: Diary): SnapshotItem[] {
+		if(!snapshots){
 			return [];
 		}
 		
-		const toPhase = (phase: Snapshot, index:number): SnapshotItem => {
-			return new SnapshotItem(phase.title, phase.code, phase.comment, index, vscode.TreeItemCollapsibleState.None, {
+		const toSnapshot = (snap: Snapshot, index:number): SnapshotItem => {
+			return new SnapshotItem(snap.title, snap.code, snap.comment, index, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openSnapshot',
 				title: '',
-				arguments: [phase, snap]
+				arguments: [snap, diary]
 			});
 		};
 
-		const ps = phases
-				? phases.map((phase, index) => toPhase(phase, index))
+		const s = snapshots
+				? snapshots.map((snap, index) => toSnapshot(snap, index))
 				: [];
 
-		return ps;
+		return s;
 	}
 }
 
@@ -74,7 +74,7 @@ export class DiaryItem extends vscode.TreeItem {
 	constructor(
 		public ref: Diary,
 		public readonly title: string,
-		public phases : Snapshot[],
+		public snapshots : Snapshot[],
 		public type: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState
 	) {
