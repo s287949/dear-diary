@@ -79,7 +79,7 @@ export class DiaryItem extends vscode.TreeItem {
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState
 	) {
 		super(title, collapsibleState);
-		this.contextValue="snapshot";
+		this.contextValue="diary";
 	}
 
 	iconPath = checkType(this.type);
@@ -116,7 +116,7 @@ class SnapshotItem extends vscode.TreeItem {
 		public readonly command?: vscode.Command
 	) {
 		super(title, collapsibleState);
-		this.contextValue="phase";
+		this.contextValue="snapshot";
 		this.description=(phaseno+1).toString();
 	}
 

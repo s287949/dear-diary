@@ -30,6 +30,7 @@ nuovo snap:
 
 */
 let terminalData = {};
+let tc = ""; // variable for temporary commits in case the user checks out a project snapshot
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 function activate(context) {
@@ -70,9 +71,16 @@ function activate(context) {
         else {
             let command = "";
             let output;
-            command = "cd " + rootPath + " git checkout " + snap.code;
+            command = "cd " + rootPath + " && git add .";
             output = await execShell(command);
-            vscode.window.showInformationMessage(output);
+            command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
+            output = await execShell(command);
+            tc = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
+            command = "cd " + rootPath + " && git checkout " + snap.code;
+            output = await execShell(command);
+            if (output === "error") {
+                vscode.window.showErrorMessage("Error: Could not open snapshot");
+            }
         }
         commentProvider.setComment(snap);
     });
@@ -96,6 +104,22 @@ function activate(context) {
     });
     vscode.commands.registerCommand('extension.saveChanges', script => {
         context.globalState.update("snaps", snaps);
+    });
+    vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
+        if (tc === "") {
+            vscode.window.showInformationMessage("No project snapshot was open");
+            return;
+        }
+        let command = "";
+        let output;
+        command = "cd " + rootPath + " && git checkout " + tc;
+        output = await execShell(command);
+        if (output === "error") {
+            vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
+        }
+        else {
+            tc = "";
+        }
     });
     //Comment webview implementation
     const commentProvider = new CommentViewProvider(context.extensionUri);
@@ -545,6 +569,8 @@ const execShell = (cmd) => new Promise((resolve, reject) => {
     });
 });
 // this method is called when your extension is deactivated
-function deactivate() { }
+function deactivate() {
+    vscode.commands.executeCommand("dear-diary.closeProjectSnapshot");
+}
 exports.deactivate = deactivate;
 //# sourceMappingURL=extension.js.map

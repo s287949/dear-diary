@@ -30,6 +30,7 @@ nuovo snap:
 
 
 let terminalData = {};
+let tc = ""; // variable for temporary commits in case the user checks out a project snapshot
 
 
 // this method is called when your extension is activated
@@ -74,9 +75,16 @@ export function activate(context: vscode.ExtensionContext) {
 		else {
 			let command: string = "";
 			let output;
-			command = "cd "+ rootPath +" git checkout "+snap.code;
+			command = "cd " + rootPath + " && git add .";
 			output = await execShell(command);
-			vscode.window.showInformationMessage(output);
+			command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
+			output = await execShell(command);
+			tc = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
+			command = "cd "+ rootPath +" && git checkout "+snap.code;
+			output = await execShell(command);
+			if(output === "error"){
+				vscode.window.showErrorMessage("Error: Could not open snapshot");
+			}
 		}
 
 		commentProvider.setComment(snap);
@@ -104,6 +112,23 @@ export function activate(context: vscode.ExtensionContext) {
 
 	vscode.commands.registerCommand('extension.saveChanges', script => {
 		context.globalState.update("snaps", snaps);
+	});
+
+	vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
+		if(tc===""){
+			vscode.window.showInformationMessage("No project snapshot was open");
+			return;
+		}
+		let command: string = "";
+		let output;
+		command = "cd "+ rootPath +" && git checkout "+tc;
+		output = await execShell(command);
+		if(output === "error"){
+			vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
+		}
+		else {
+			tc="";
+		}
 	});
 
 	//Comment webview implementation
@@ -631,4 +656,6 @@ const execShell = (cmd: string) =>
 
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {
+	vscode.commands.executeCommand("dear-diary.closeProjectSnapshot");
+ }

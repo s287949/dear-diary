@@ -31,6 +31,11 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "dear-diary.closeProjectSnapshot",
+				"title": "Close Snapshot",
+				"icon": "$(arrow-up)"
+			},
+			{
 				"command": "dear-diary.newPhase",
 				"title": "Add new Snapshot",
 				"icon": "$(add)"
@@ -100,13 +105,18 @@
 			],
 			"view/item/context": [
 				{
+					"command": "dear-diary.closeProjectSnapshot",
+					"when": "view == snapshots && viewItem == diary",
+					"group": "inline"
+				},
+				{
 					"command": "dear-diary.newPhase",
-					"when": "view == snapshots && viewItem == snapshot",
+					"when": "view == snapshots && viewItem == diary",
 					"group": "inline"
 				},
 				{
 					"command": "dear-diary.comment",
-					"when": "view == snapshots && viewItem == phase",
+					"when": "view == snapshots && viewItem == snapshot",
 					"group": "inline"
 				}
 			]
