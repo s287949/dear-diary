@@ -157,7 +157,9 @@ export function activate(context: vscode.ExtensionContext) {
 		output = await execShell(command);
 		command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
 		output = await execShell(command);
-		ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
+		if(output!=="error"){
+			ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
+		}
 	});
 
 	//New code snapshot command impelementation
@@ -331,16 +333,17 @@ export function activate(context: vscode.ExtensionContext) {
 									});
 								});
 
-								//create new phase and push it to the relative snapshot
-								node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps));
-
 								//creating snapshot and adding it to the array of snapshots
 								if (type === 1 || type === 2) {
 									node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps));
 								}
 								else if (type === 3) {
 									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-									vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+									await vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+									if (ns.code === "") {
+										vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
+										return;
+									}
 									node.ref.snapshots.push(ns);
 								}
 

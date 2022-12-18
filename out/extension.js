@@ -144,7 +144,9 @@ function activate(context) {
         output = await execShell(command);
         command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
         output = await execShell(command);
-        ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
+        if (output !== "error") {
+            ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
+        }
     });
     //New code snapshot command impelementation
     const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
@@ -298,15 +300,17 @@ function activate(context) {
                                         }
                                     });
                                 });
-                                //create new phase and push it to the relative snapshot
-                                node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps));
                                 //creating snapshot and adding it to the array of snapshots
                                 if (type === 1 || type === 2) {
                                     node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps));
                                 }
                                 else if (type === 3) {
                                     let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-                                    vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+                                    await vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+                                    if (ns.code === "") {
+                                        vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
+                                        return;
+                                    }
                                     node.ref.snapshots.push(ns);
                                 }
                                 //update snapshot array of relative diary and updating system diary array
