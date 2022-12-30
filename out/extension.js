@@ -15,22 +15,8 @@ const dependenciesCatcher_1 = require("./dependenciesCatcher");
 const fs = require("fs");
 const path = require("path");
 const cp = require("child_process");
-/*
-
-nuovo diario:
-- nuova cartella .deardiary
-- git init nella cartella .deardiary
-- git add .
-- git commit -m "<nome snap o numero snap>"
-
-
-nuovo snap:
-- git add .
-- git commit -m "<nome snap o numero snap>"
-
-*/
 let terminalData = {};
-let tc = ""; // variable for temporary commits in case the user checks out a project snapshot
+let tc = ""; // variable for temporary commit in case the user checks out to a project snapshot
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 function activate(context) {
@@ -102,9 +88,11 @@ function activate(context) {
             debugger;
         });
     });
+    //save changes to a comment
     vscode.commands.registerCommand('extension.saveChanges', script => {
         context.globalState.update("snaps", snaps);
     });
+    //close the project snapshot previously opened and go back to the version of the code in act before selecting it
     vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
         if (tc === "") {
             vscode.window.showInformationMessage("No project snapshot was open");
@@ -127,12 +115,27 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.comment', () => {
         vscode.commands.executeCommand('comment.focus');
     });
+    //create a new project snapshot using git
     vscode.commands.registerCommand('dear-diary.new-terminal', async (type, snapNo, ns) => {
         let command = "";
         const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
             ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
         let output;
-        if (type === 1) {
+        if (type === 0) {
+            command = "cd " + rootPath + " && rmdir .git /s /q";
+            output = await execShell(command);
+            if (output === "error") {
+                ns.code = "";
+                return;
+            }
+            command = "cd " + rootPath + " && git init";
+            output = await execShell(command);
+            if (output === "error") {
+                ns.code = "";
+                return;
+            }
+        }
+        else if (type === 1) {
             command = "cd " + rootPath + " && git init";
             output = await execShell(command);
             if (output === "error") {
@@ -151,6 +154,7 @@ function activate(context) {
     //New code snapshot command impelementation
     const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
+    //create a new code/file/project diary and the relative first snapshot
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async (type) => {
         await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
             vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
@@ -185,7 +189,7 @@ function activate(context) {
                                 vscode.window.showErrorMessage("Error: No code selected for the snapshot");
                             }
                             else {
-                                context.globalState.update("snaps", []);
+                                //context.globalState.update("snaps", []);
                                 snaps = context.globalState.get("snaps");
                                 if (!snaps) {
                                     context.globalState.update("snaps", []);
@@ -216,12 +220,34 @@ function activate(context) {
                                 }
                                 else if (type === 3) {
                                     let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-                                    await vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
-                                    if (ns.code === "") {
-                                        vscode.window.showErrorMessage("Error: Could not create new Project Diary");
-                                        return;
+                                    if (fileTree[0].name === ".git") {
+                                        const selection = await vscode.window.showWarningMessage("Git repository already existing, creating the new diary the repo will be deleted, continue?", "Continue anyway", "Cancel");
+                                        if (selection !== null) {
+                                            if (selection === 'Continue anyway') {
+                                                await vscode.commands.executeCommand('dear-diary.new-terminal', 0, 1, ns);
+                                                if (ns.code === "") {
+                                                    vscode.window.showErrorMessage("Error: Could not create new Project Diary");
+                                                    return;
+                                                }
+                                                snaps.push(new Snapshot_1.Diary(qis.name, [ns], "project"));
+                                            }
+                                            else if (selection === 'Cancel') {
+                                                vscode.window.showInformationMessage("The diary has not been created");
+                                                return;
+                                            }
+                                        }
+                                        else {
+                                            vscode.window.showInformationMessage("No selection applied: the diary has not been created");
+                                        }
                                     }
-                                    snaps.push(new Snapshot_1.Diary(qis.name, [ns], "project"));
+                                    else {
+                                        await vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
+                                        if (ns.code === "") {
+                                            vscode.window.showErrorMessage("Error: Could not create new Project Diary");
+                                            return;
+                                        }
+                                        snaps.push(new Snapshot_1.Diary(qis.name, [ns], "project"));
+                                    }
                                 }
                                 //updating the system array of diaries
                                 context.globalState.update("snaps", snaps);
@@ -236,6 +262,7 @@ function activate(context) {
             });
         });
     }));
+    //create new snapshot to the previosuly created diary
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node) => {
         await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
             vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
@@ -306,7 +333,7 @@ function activate(context) {
                                 }
                                 else if (type === 3) {
                                     let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-                                    await vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+                                    await vscode.commands.executeCommand('dear-diary.new-terminal', 2, node.ref.snapshots.length + 1, ns);
                                     if (ns.code === "") {
                                         vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
                                         return;

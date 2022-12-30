@@ -13,24 +13,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from "child_process";
 
-/*
-
-nuovo diario:
-- nuova cartella .deardiary
-- git init nella cartella .deardiary
-- git add .
-- git commit -m "<nome snap o numero snap>"
-
-
-nuovo snap:
-- git add .
-- git commit -m "<nome snap o numero snap>"
-
-*/
-
 
 let terminalData = {};
-let tc = ""; // variable for temporary commits in case the user checks out a project snapshot
+let tc = ""; // variable for temporary commit in case the user checks out to a project snapshot
 
 
 // this method is called when your extension is activated
@@ -80,9 +65,9 @@ export function activate(context: vscode.ExtensionContext) {
 			command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
 			output = await execShell(command);
 			tc = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
-			command = "cd "+ rootPath +" && git checkout "+snap.code;
+			command = "cd " + rootPath + " && git checkout " + snap.code;
 			output = await execShell(command);
-			if(output === "error"){
+			if (output === "error") {
 				vscode.window.showErrorMessage("Error: Could not open snapshot");
 			}
 		}
@@ -110,24 +95,26 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
+	//save changes to a comment
 	vscode.commands.registerCommand('extension.saveChanges', script => {
 		context.globalState.update("snaps", snaps);
 	});
 
+	//close the project snapshot previously opened and go back to the version of the code in act before selecting it
 	vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-		if(tc===""){
+		if (tc === "") {
 			vscode.window.showInformationMessage("No project snapshot was open");
 			return;
 		}
 		let command: string = "";
 		let output;
-		command = "cd "+ rootPath +" && git checkout "+tc;
+		command = "cd " + rootPath + " && git checkout " + tc;
 		output = await execShell(command);
-		if(output === "error"){
+		if (output === "error") {
 			vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
 		}
 		else {
-			tc="";
+			tc = "";
 		}
 	});
 
@@ -138,13 +125,28 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.executeCommand('comment.focus');
 	});
 
+	//create a new project snapshot using git
 	vscode.commands.registerCommand('dear-diary.new-terminal', async (type: number, snapNo: number, ns: Snapshot) => {
 		let command: string = "";
 		const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 			? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
 		let output;
 
-		if (type === 1) {
+		if (type === 0) {
+			command = "cd " + rootPath + " && rmdir .git /s /q";
+			output = await execShell(command);
+			if (output === "error") {
+				ns.code = "";
+				return;
+			}
+			command = "cd " + rootPath + " && git init";
+			output = await execShell(command);
+			if (output === "error") {
+				ns.code = "";
+				return;
+			}
+		}
+		else if (type === 1) {
 			command = "cd " + rootPath + " && git init";
 			output = await execShell(command);
 			if (output === "error") {
@@ -157,7 +159,7 @@ export function activate(context: vscode.ExtensionContext) {
 		output = await execShell(command);
 		command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
 		output = await execShell(command);
-		if(output!=="error"){
+		if (output !== "error") {
 			ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
 		}
 	});
@@ -166,6 +168,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
 
+	//create a new code/file/project diary and the relative first snapshot
 	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async (type: number) => {
 		await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
 			vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
@@ -204,7 +207,7 @@ export function activate(context: vscode.ExtensionContext) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
-								context.globalState.update("snaps", []);
+								//context.globalState.update("snaps", []);
 								snaps = context.globalState.get("snaps");
 								if (!snaps) {
 									context.globalState.update("snaps", []);
@@ -238,12 +241,34 @@ export function activate(context: vscode.ExtensionContext) {
 								}
 								else if (type === 3) {
 									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-									await vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
-									if (ns.code === "") {
-										vscode.window.showErrorMessage("Error: Could not create new Project Diary");
-										return;
+									if (fileTree[0].name === ".git") {
+										const selection = await vscode.window.showWarningMessage("Git repository already existing, creating the new diary the repo will be deleted, continue?", "Continue anyway", "Cancel");
+										if (selection !== null) {
+											if (selection === 'Continue anyway') {
+												await vscode.commands.executeCommand('dear-diary.new-terminal', 0, 1, ns);
+												if (ns.code === "") {
+													vscode.window.showErrorMessage("Error: Could not create new Project Diary");
+													return;
+												}
+												snaps.push(new Diary(qis.name, [ns], "project"));
+											}
+											else if (selection === 'Cancel') {
+												vscode.window.showInformationMessage("The diary has not been created");
+												return;
+											}
+										}
+										else {
+											vscode.window.showInformationMessage("No selection applied: the diary has not been created");
+										}
 									}
-									snaps.push(new Diary(qis.name, [ns], "project"));
+									else {
+										await vscode.commands.executeCommand('dear-diary.new-terminal', 1, 1, ns);
+										if (ns.code === "") {
+											vscode.window.showErrorMessage("Error: Could not create new Project Diary");
+											return;
+										}
+										snaps.push(new Diary(qis.name, [ns], "project"));
+									}
 								}
 
 								//updating the system array of diaries
@@ -260,6 +285,7 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	}));
 
+	//create new snapshot to the previosuly created diary
 	context.subscriptions.push(vscode.commands.registerCommand('dear-diary.newPhase', async (node: DiaryItem) => {
 		await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
 			vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
@@ -339,7 +365,7 @@ export function activate(context: vscode.ExtensionContext) {
 								}
 								else if (type === 3) {
 									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
-									await vscode.commands.executeCommand('dear-diary.new-terminal', 0, node.ref.snapshots.length + 1, ns);
+									await vscode.commands.executeCommand('dear-diary.new-terminal', 2, node.ref.snapshots.length + 1, ns);
 									if (ns.code === "") {
 										vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
 										return;
@@ -661,4 +687,4 @@ const execShell = (cmd: string) =>
 // this method is called when your extension is deactivated
 export function deactivate() {
 	vscode.commands.executeCommand("dear-diary.closeProjectSnapshot");
- }
+}
