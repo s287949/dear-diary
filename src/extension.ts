@@ -15,7 +15,6 @@ import * as cp from "child_process";
 
 
 let terminalData = {};
-let tc = ""; // variable for temporary commit in case the user checks out to a project snapshot
 
 
 // this method is called when your extension is activated
@@ -25,6 +24,8 @@ export function activate(context: vscode.ExtensionContext) {
 	//Show dependencies in the Dependencies view
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+
+	var tc = false; // variable for temporary commit in case the user checks out to a project snapshot
 
 	//Providing Snapshots to the related view
 	const snapshotsProvider = new SnapshotsProvider(context);
@@ -61,11 +62,13 @@ export function activate(context: vscode.ExtensionContext) {
 		else {
 			let command: string = "";
 			let output;
-			command = "cd " + rootPath + " && git add .";
-			output = await execShell(command);
-			command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
-			output = await execShell(command);
-			tc = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString()!;
+			if (!tc) {
+				command = "cd " + rootPath + " && git add .";
+				output = await execShell(command);
+				command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
+				output = await execShell(command);
+				tc = true;
+			}
 			command = "cd " + rootPath + " && git checkout " + snap.code;
 			output = await execShell(command);
 			if (output === "error") {
@@ -103,19 +106,19 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//close the project snapshot previously opened and go back to the version of the code in act before selecting it
 	vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-		if (tc === "") {
-			vscode.window.showInformationMessage("No project snapshot was open");
+		if(!tc){
+			vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
 			return;
 		}
 		let command: string = "";
 		let output;
-		command = "cd " + rootPath + " && git checkout " + tc;
+		command = "cd " + rootPath + " && git checkout master";
 		output = await execShell(command);
 		if (output === "error") {
 			vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
 		}
 		else {
-			tc = "";
+			tc = false;
 		}
 	});
 
@@ -208,7 +211,7 @@ export function activate(context: vscode.ExtensionContext) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
-								//context.globalState.update("snaps", []);
+								context.globalState.update("snaps", []);
 								snaps = context.globalState.get("snaps");
 								if (!snaps) {
 									context.globalState.update("snaps", []);
@@ -239,7 +242,7 @@ export function activate(context: vscode.ExtensionContext) {
 								if (type === 1) {
 									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
 								}
-								else if(type === 2){
+								else if (type === 2) {
 									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
 								}
 								else if (type === 3) {
@@ -434,6 +437,9 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
 
 		if (isDirectory) {
+			if (originalFilePath.includes(fullPath) && type !== 3) {
+				fsInst.fileSnapshoted = true;
+			}
 			if (!fsInst.name.startsWith(".", 0)) {
 				fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
 			}
@@ -460,10 +466,6 @@ function registerTerminalForCapture(terminal: vscode.Terminal) {
 	terminal.processId.then(terminalId => {
 		(<any>terminalData)[terminalId!] = "";
 		(<any>terminal).onDidWriteData((data: any) => {
-			// TODO:
-			//   - Need to remove (or handle) backspace
-			//   - not sure what to do about carriage return???
-			//   - might have some odd output
 			(<any>terminalData)[terminalId!] += data;
 		});
 	});
@@ -610,7 +612,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 		this.snapSelected = true;
 
 		if (this._view) {
-			this._view.webview.postMessage({ type: 'comment', comment: s.comment });
+			this._view.webview.postMessage({ type: 'comment', relatedData: s });
 		}
 	}
 
@@ -646,6 +648,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				<title>Comment</title>
 			</head>
 			<body>
+				<h2 id="label"></h2>	
 				<div id="card" class="card">
 					<div class="container">
 						<pre class="text-box">Select a snapshot to view and edit the comment</pre>

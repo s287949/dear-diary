@@ -16,7 +16,6 @@ const fs = require("fs");
 const path = require("path");
 const cp = require("child_process");
 let terminalData = {};
-let tc = ""; // variable for temporary commit in case the user checks out to a project snapshot
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 function activate(context) {
@@ -24,6 +23,7 @@ function activate(context) {
     //Show dependencies in the Dependencies view
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+    var tc = false; // variable for temporary commit in case the user checks out to a project snapshot
     //Providing Snapshots to the related view
     const snapshotsProvider = new snapshotsProvider_1.SnapshotsProvider(context);
     vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
@@ -58,11 +58,13 @@ function activate(context) {
         else {
             let command = "";
             let output;
-            command = "cd " + rootPath + " && git add .";
-            output = await execShell(command);
-            command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
-            output = await execShell(command);
-            tc = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
+            if (!tc) {
+                command = "cd " + rootPath + " && git add .";
+                output = await execShell(command);
+                command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
+                output = await execShell(command);
+                tc = true;
+            }
             command = "cd " + rootPath + " && git checkout " + snap.code;
             output = await execShell(command);
             if (output === "error") {
@@ -95,19 +97,19 @@ function activate(context) {
     });
     //close the project snapshot previously opened and go back to the version of the code in act before selecting it
     vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-        if (tc === "") {
-            vscode.window.showInformationMessage("No project snapshot was open");
+        if (!tc) {
+            vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
             return;
         }
         let command = "";
         let output;
-        command = "cd " + rootPath + " && git checkout " + tc;
+        command = "cd " + rootPath + " && git checkout master";
         output = await execShell(command);
         if (output === "error") {
             vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
         }
         else {
-            tc = "";
+            tc = false;
         }
     });
     //Comment webview implementation
@@ -190,7 +192,7 @@ function activate(context) {
                                 vscode.window.showErrorMessage("Error: No code selected for the snapshot");
                             }
                             else {
-                                //context.globalState.update("snaps", []);
+                                context.globalState.update("snaps", []);
                                 snaps = context.globalState.get("snaps");
                                 if (!snaps) {
                                     context.globalState.update("snaps", []);
@@ -392,6 +394,9 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
         const isLastDirInTree = isDirectory && lastItem;
         let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
         if (isDirectory) {
+            if (originalFilePath.includes(fullPath) && type !== 3) {
+                fsInst.fileSnapshoted = true;
+            }
             if (!fsInst.name.startsWith(".", 0)) {
                 fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
             }
@@ -416,10 +421,6 @@ function registerTerminalForCapture(terminal) {
     terminal.processId.then(terminalId => {
         terminalData[terminalId] = "";
         terminal.onDidWriteData((data) => {
-            // TODO:
-            //   - Need to remove (or handle) backspace
-            //   - not sure what to do about carriage return???
-            //   - might have some odd output
             terminalData[terminalId] += data;
         });
     });
@@ -533,7 +534,7 @@ class CommentViewProvider {
         this.snap = s;
         this.snapSelected = true;
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', comment: s.comment });
+            this._view.webview.postMessage({ type: 'comment', relatedData: s });
         }
     }
     _getHtmlForWebview(webview) {
@@ -565,6 +566,7 @@ class CommentViewProvider {
 				<title>Comment</title>
 			</head>
 			<body>
+				<h2 id="label"></h2>	
 				<div id="card" class="card">
 					<div class="container">
 						<pre class="text-box">Select a snapshot to view and edit the comment</pre>

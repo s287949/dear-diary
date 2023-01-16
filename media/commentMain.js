@@ -18,6 +18,7 @@
         switch (message.type) {
             case 'comment':
                 {
+                    var snap = message.relatedData;
                     const com = document.querySelector('.text-box');
                     if(message.comment!==""){
                         com.textContent = message.comment;
