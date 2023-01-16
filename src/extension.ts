@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 
-		commentProvider.setComment(snap);
+		commentProvider.setComment(snap, diary.title);
 	});
 
 	//Open file showing the command line script and the output
@@ -350,8 +350,7 @@ export function activate(context: vscode.ExtensionContext) {
 								let scripts: Resource[] = [];
 								const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
 								if (terminals.length <= 0) {
-									vscode.window.showWarningMessage('No terminals found, cannot create new snapshot');
-									return;
+									vscode.commands.executeCommand('terminal.focus');
 								}
 
 								await vscode.env.clipboard.readText().then((text) => {
@@ -607,12 +606,12 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 		});
 	}
 
-	public setComment(s: Snapshot) {
+	public setComment(s: Snapshot, d: string) {
 		this.snap = s;
 		this.snapSelected = true;
 
 		if (this._view) {
-			this._view.webview.postMessage({ type: 'comment', relatedData: s });
+			this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d } });
 		}
 	}
 

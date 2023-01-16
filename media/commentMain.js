@@ -18,11 +18,14 @@
         switch (message.type) {
             case 'comment':
                 {
-                    var snap = message.relatedData;
+                    var snap = message.relatedData.snap;
+                    var dTitle = message.relatedData.diaryTitle;
+                    const lab = document.querySelector('#label');
+                    lab.textContent = "Diary/Snapshot: "+dTitle+"/"+snap.title;
                     const com = document.querySelector('.text-box');
-                    if(message.comment!==""){
-                        com.textContent = message.comment;
-                        comment = message.comment;
+                    if(snap.comment!==""){
+                        com.textContent = snap.comment;
+                        comment = snap.comment;
                     }
                     else {
                         com.textContent = "";

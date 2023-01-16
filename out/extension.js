@@ -71,7 +71,7 @@ function activate(context) {
                 vscode.window.showErrorMessage("Error: Could not open snapshot");
             }
         }
-        commentProvider.setComment(snap);
+        commentProvider.setComment(snap, diary.title);
     });
     //Open file showing the command line script and the output
     vscode.commands.registerCommand('extension.openScript', script => {
@@ -319,8 +319,7 @@ function activate(context) {
                                 let scripts = [];
                                 const terminals = vscode.window.terminals;
                                 if (terminals.length <= 0) {
-                                    vscode.window.showWarningMessage('No terminals found, cannot create new snapshot');
-                                    return;
+                                    vscode.commands.executeCommand('terminal.focus');
                                 }
                                 await vscode.env.clipboard.readText().then((text) => {
                                     let scrts = text.split(new RegExp(/PS C:\\.*>/));
@@ -530,11 +529,11 @@ class CommentViewProvider {
             }
         });
     }
-    setComment(s) {
+    setComment(s, d) {
         this.snap = s;
         this.snapSelected = true;
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', relatedData: s });
+            this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d } });
         }
     }
     _getHtmlForWebview(webview) {
