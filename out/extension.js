@@ -37,7 +37,8 @@ function activate(context) {
         const nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
         if (diary.type !== "project") {
-            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary + "\\" + "code snapshot.txt");
+            var t = snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot.txt";
+            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot.txt");
             vscode.workspace.onDidOpenTextDocument((a) => {
                 let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + ".txt" : "C:\\" + diary.title + "\\" + "code snapshot.txt";
                 if (a.fileName === fn) {
@@ -201,8 +202,7 @@ function activate(context) {
                                 let scripts = [];
                                 const terminals = vscode.window.terminals;
                                 if (terminals.length <= 0) {
-                                    vscode.window.showWarningMessage('No terminals found, cannot create new Diary');
-                                    return;
+                                    vscode.commands.executeCommand('terminal.focus');
                                 }
                                 await vscode.env.clipboard.readText().then((text) => {
                                     let scrts = text.split(new RegExp(/PS C:\\.*>/));
@@ -215,8 +215,11 @@ function activate(context) {
                                     });
                                 });
                                 //creating snapshot and adding it to the array of snapshots
-                                if (type === 1 || type === 2) {
+                                if (type === 1) {
                                     snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "code"));
+                                }
+                                else if (type === 2) {
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "file"));
                                 }
                                 else if (type === 3) {
                                     let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);

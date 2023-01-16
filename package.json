@@ -106,12 +106,12 @@
 			"view/item/context": [
 				{
 					"command": "dear-diary.closeProjectSnapshot",
-					"when": "view == snapshots && viewItem == diary",
+					"when": "view == snapshots && viewItem == projectDiary",
 					"group": "inline"
 				},
 				{
 					"command": "dear-diary.newPhase",
-					"when": "view == snapshots && viewItem == diary",
+					"when": "view == snapshots && viewItem == codeDiary || viewItem == fileDiary || viewItem == projectDiary",
 					"group": "inline"
 				},
 				{

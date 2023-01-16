@@ -65,7 +65,7 @@ class DiaryItem extends vscode.TreeItem {
         this.type = type;
         this.collapsibleState = collapsibleState;
         this.iconPath = checkType(this.type);
-        this.contextValue = "diary";
+        this.contextValue = type + "Diary";
     }
 }
 exports.DiaryItem = DiaryItem;
@@ -103,7 +103,12 @@ class SnapshotItem extends vscode.TreeItem {
             dark: path.join(__filename, '..', '..', 'resources', 'dark', 'layers.svg')
         };
         this.contextValue = "snapshot";
-        this.description = (phaseno + 1).toString();
+        if (comment !== "") {
+            this.description = (phaseno + 1).toString() + " - commented";
+        }
+        else {
+            this.description = (phaseno + 1).toString();
+        }
     }
 }
 //# sourceMappingURL=snapshotsProvider.js.map

@@ -26,7 +26,7 @@ export async function newCodeSnapshot(context: ExtensionContext) {
 		return state as State;
 	}
 
-	const title = 'Create New Snapshot';
+	const title = 'Create New Diary';
 
 	async function inputSnapshotTitle(input: MultiStepInput, state: Partial<State>) {
 		state.name = await input.showInputBox({
@@ -34,7 +34,7 @@ export async function newCodeSnapshot(context: ExtensionContext) {
 			step: 1,
 			totalSteps: 2,
 			value: state.name || '',
-			prompt: 'Choose a unique title for the Snapshot',
+			prompt: 'Choose a unique title for the Diary',
 			validate: validateTitleIsUnique,
 			shouldResume: shouldResume
 		});
@@ -47,7 +47,7 @@ export async function newCodeSnapshot(context: ExtensionContext) {
 			step: 2,
 			totalSteps: 2,
 			value: state.phase || '',
-			prompt: 'Choose a phase title (optional)',
+			prompt: 'Choose a Snapshot title (optional)',
 			validate: validatePhaseTitle,
 			shouldResume: shouldResume
 		});

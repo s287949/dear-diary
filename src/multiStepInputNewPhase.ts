@@ -25,7 +25,7 @@ export async function newCodePhase(context: ExtensionContext) {
 		return state as State;
 	}
 
-	const title = 'Create New Phase';
+	const title = 'Create New Snapshot';
 
 	async function inputPhaseTitle(input: MultiStepInput, state: Partial<State>) {
 		state.phase = await input.showInputBox({
@@ -33,7 +33,7 @@ export async function newCodePhase(context: ExtensionContext) {
 			step: 1,
 			totalSteps: 1,
 			value: state.phase || '',
-			prompt: 'Choose a phase title (optional)',
+			prompt: 'Choose Snapshot title (optional)',
 			validate: validatePhaseTitle,
 			shouldResume: shouldResume
 		});
