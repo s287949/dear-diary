@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DiaryItem = exports.SnapshotsProvider = void 0;
+exports.SnapshotItem = exports.DiaryItem = exports.SnapshotsProvider = void 0;
 const vscode = require("vscode");
 const path = require("path");
 class SnapshotsProvider {
@@ -43,7 +43,7 @@ class SnapshotsProvider {
             return [];
         }
         const toSnapshot = (snap, index) => {
-            return new SnapshotItem(snap.title, snap.code, snap.comment, index, vscode.TreeItemCollapsibleState.None, {
+            return new SnapshotItem(snap.title, snap.code, snap.comment, index, snap, diary.title, vscode.TreeItemCollapsibleState.None, {
                 command: 'extension.openSnapshot',
                 title: '',
                 arguments: [snap, diary]
@@ -90,12 +90,14 @@ function checkType(type) {
     }
 }
 class SnapshotItem extends vscode.TreeItem {
-    constructor(title, code, comment, phaseno, collapsibleState, command) {
+    constructor(title, code, comment, phaseno, snap, diaryTitle, collapsibleState, command) {
         super(title, collapsibleState);
         this.title = title;
         this.code = code;
         this.comment = comment;
         this.phaseno = phaseno;
+        this.snap = snap;
+        this.diaryTitle = diaryTitle;
         this.collapsibleState = collapsibleState;
         this.command = command;
         this.iconPath = {
@@ -111,4 +113,5 @@ class SnapshotItem extends vscode.TreeItem {
         }
     }
 }
+exports.SnapshotItem = SnapshotItem;
 //# sourceMappingURL=snapshotsProvider.js.map

@@ -17,14 +17,16 @@ export class Snapshot {
 	scripts: Resource[];
 	files: FSInstance[];
 	dependencies: Resource[];
+	extension: string;
 
-	public constructor(title: string, code: string, comment: string, scripts:Resource[], files:FSInstance[], dependencies: Resource[]) {
+	public constructor(title: string, code: string, comment: string, scripts:Resource[], files:FSInstance[], dependencies: Resource[], extension: string) {
 		this.title = title;
 		this.code = code;
 		this.comment = comment;
 		this.scripts = scripts;
 		this.files = files;
 		this.dependencies=dependencies;
+		this.extension = extension;
 	}
 }
 

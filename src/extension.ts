@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { newCodeSnapshot } from './multiStepInputNewSnapshot';
 import { newCodePhase } from './multiStepInputNewPhase';
 import { DepNodeProvider } from './dependenciesProvider';
-import { SnapshotsProvider, DiaryItem } from './snapshotsProvider';
+import { SnapshotsProvider, DiaryItem, SnapshotItem } from './snapshotsProvider';
 import { FilesNodeProvider } from './filesProvider';
 import { ScriptsProvider } from './scriptsProvider';
 import { Diary, Snapshot, FSInstance, Resource } from './Snapshot';
@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const snapshotsProvider = new SnapshotsProvider(context);
 	vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
 	vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
-	//Open file showing code snapshotted
+	//Open file showing code/file snapshotted
 	vscode.commands.registerCommand('extension.openSnapshot', async (snap: Snapshot, diary: Diary) => {
 		const nodeDependenciesProvider = new DepNodeProvider(snap.dependencies!);
 		vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
@@ -40,10 +40,9 @@ export function activate(context: vscode.ExtensionContext) {
 		const nodeFilesProvider = new FilesNodeProvider(snap.files!);
 		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
 		if (diary.type !== "project") {
-			var t = snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot.txt";
-			var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot.txt");
+			var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
 			vscode.workspace.onDidOpenTextDocument((a) => {
-				let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + ".txt" : "C:\\" + diary.title + "\\" + "code snapshot.txt";
+				let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension;
 				if (a.fileName === fn) {
 					vscode.window.showTextDocument(a, 1, false).then(e => {
 						e.edit(edit => {
@@ -99,34 +98,37 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-	//save changes to a comment
+	//Save changes to a comment
 	vscode.commands.registerCommand('extension.saveChanges', script => {
 		context.globalState.update("snaps", snaps);
+		vscode.commands.executeCommand("dear-diary.refreshSnapshots");
 	});
 
-	//close the project snapshot previously opened and go back to the version of the code in act before selecting it
+	//Close the project snapshot previously opened and go back to the version of the code in act before selecting it
 	vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-		if(!tc){
+		/*if(!tc){
 			vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
 			return;
-		}
+		}*/
 		let command: string = "";
 		let output;
 		command = "cd " + rootPath + " && git checkout master";
 		output = await execShell(command);
-		if (output === "error") {
+		/*if (output === "error") {
 			vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
 		}
 		else {
 			tc = false;
-		}
+		}*/
+		tc = false;
 	});
 
 	//Comment webview implementation
 	const commentProvider = new CommentViewProvider(context.extensionUri);
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
-	vscode.commands.registerCommand('dear-diary.comment', () => {
-		vscode.commands.executeCommand('comment.focus');
+	vscode.commands.registerCommand('dear-diary.comment', async (node: SnapshotItem) => {
+		await vscode.commands.executeCommand('comment.focus');
+		commentProvider.setComment(node.snap, node.diaryTitle);
 	});
 
 	//create a new project snapshot using git
@@ -180,6 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
 						const qis = await newCodeSnapshot(context);
 						let fileTree = [];
+						let packagePath : Array<string> = [];
 
 						const editor = vscode.window.activeTextEditor;
 						let code;
@@ -198,9 +201,10 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 
 							let fileName = document.fileName;
+							let ext = vscode.window.activeTextEditor?.document.languageId? vscode.window.activeTextEditor?.document.languageId : "txt";
 
 							if (rootPath) {
-								fileTree = generateFileTree(rootPath, 0, false, fileName, type);
+								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -211,7 +215,7 @@ export function activate(context: vscode.ExtensionContext) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
-								context.globalState.update("snaps", []);
+								//context.globalState.update("snaps", []);
 								snaps = context.globalState.get("snaps");
 								if (!snaps) {
 									context.globalState.update("snaps", []);
@@ -219,7 +223,14 @@ export function activate(context: vscode.ExtensionContext) {
 								}
 
 								//get dependencies
-								let deps = getDepsInPackageJson(rootPath);
+								let deps: Resource[] = [];
+								if(packagePath.length>0){
+									deps = getDepsInPackageJson(packagePath[0].replace(/\\package\.json/, ''));
+								}
+								else {
+									deps = getDepsInPackageJson(rootPath);
+								}
+								
 
 								//get command line scripts
 								let scripts: Resource[] = [];
@@ -240,13 +251,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 								//creating snapshot and adding it to the array of snapshots
 								if (type === 1) {
-									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "code"));
+									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps, ext)], "code"));
 								}
 								else if (type === 2) {
-									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps)], "file"));
+									snaps.push(new Diary(qis.name, [new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps, ext)], "file"));
 								}
 								else if (type === 3) {
-									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps, "");
 									if (fileTree[0].name === ".git") {
 										const selection = await vscode.window.showWarningMessage("Git repository already existing, creating the new diary the repo will be deleted, continue?", "Continue anyway", "Cancel");
 										if (selection !== null) {
@@ -300,6 +311,7 @@ export function activate(context: vscode.ExtensionContext) {
 						const qis = await newCodePhase(context);
 						let fileTree = [];
 						let type = 0;
+						let packagePath: Array<string> = [];
 
 						switch (node.type) {
 							case "code":
@@ -331,9 +343,10 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 
 							let fileName = document.fileName;
+							let ext = vscode.window.activeTextEditor?.document.languageId? vscode.window.activeTextEditor?.document.languageId : "txt";
 
 							if (rootPath) {
-								fileTree = generateFileTree(rootPath, 0, false, fileName, type);
+								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -344,7 +357,14 @@ export function activate(context: vscode.ExtensionContext) {
 								vscode.window.showErrorMessage("Error: No code selected for the new snapshot");
 							}
 							else {
-								let deps = getDepsInPackageJson(rootPath);
+								//get dependencies
+								let deps: Resource[] = [];
+								if(packagePath.length>0){
+									deps = getDepsInPackageJson(packagePath[0].replace(/\\package\.json/, ''));
+								}
+								else {
+									deps = getDepsInPackageJson(rootPath);
+								}
 
 								//get command line scripts
 								let scripts: Resource[] = [];
@@ -364,12 +384,12 @@ export function activate(context: vscode.ExtensionContext) {
 									});
 								});
 
-								//creating snapshot and adding it to the array of snapshots
+								//creating snapshot and adding it to the array of snapshots (aka diary)
 								if (type === 1 || type === 2) {
-									node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps));
+									node.ref.snapshots.push(new Snapshot(qis.phase, code as string, "", scripts, fileTree, deps, ext));
 								}
 								else if (type === 3) {
-									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+									let ns = new Snapshot(qis.phase, "", "", scripts, fileTree, deps, "");
 									await vscode.commands.executeCommand('dear-diary.new-terminal', 2, node.ref.snapshots.length + 1, ns);
 									if (ns.code === "") {
 										vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
@@ -402,7 +422,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 }
 
-function generateFileTree(selectedRootPath: string, level: number, parentDirIsLast = false, originalFilePath: string, type: number) {
+function generateFileTree(selectedRootPath: string, level: number, parentDirIsLast = false, originalFilePath: string, type: number, packagePath: Array<string>) {
 	let output: FSInstance[] = [];
 
 	// return if path to target is not valid
@@ -436,23 +456,22 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
 
 		if (isDirectory) {
+			if(fullPath.replace(/^.*[\\\/]/, '') === "node_modules"){
+				return;
+			}
 			if (originalFilePath.includes(fullPath) && type !== 3) {
 				fsInst.fileSnapshoted = true;
 			}
 			if (!fsInst.name.startsWith(".", 0)) {
-				fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
+				fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type, packagePath);
 			}
 		}
 		else {
+			if(fullPath.replace(/^.*[\\\/]/, '') === "package.json"){
+				packagePath.push(fullPath);
+			}
 			if (fullPath === originalFilePath && type !== 3) {
 				fsInst.fileSnapshoted = true;
-			}
-			else if (type === 3) {
-				vscode.workspace.findFiles("*").then((doc) => {
-					vscode.workspace.openTextDocument(doc[0]).then((d) => {
-						fsInst.snap = d.getText();
-					});
-				});
 			}
 		}
 
@@ -569,7 +588,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 	private _view?: vscode.WebviewView;
 
-	private snap: Snapshot = new Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], []);
+	private snap: Snapshot = new Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "");
 	private snapSelected: boolean = false;
 
 	constructor(

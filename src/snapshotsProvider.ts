@@ -55,7 +55,7 @@ export class SnapshotsProvider implements vscode.TreeDataProvider<DiaryItem | Sn
 		}
 		
 		const toSnapshot = (snap: Snapshot, index:number): SnapshotItem => {
-			return new SnapshotItem(snap.title, snap.code, snap.comment, index, vscode.TreeItemCollapsibleState.None, {
+			return new SnapshotItem(snap.title, snap.code, snap.comment, index, snap, diary.title, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openSnapshot',
 				title: '',
 				arguments: [snap, diary]
@@ -106,12 +106,14 @@ function checkType(type: string) {
 	}
 }
 
-class SnapshotItem extends vscode.TreeItem {
+export class SnapshotItem extends vscode.TreeItem {
 	constructor(
 		public readonly title: string,
 		private code: string,
 		private comment: string,
 		private phaseno: number,
+		public snap: Snapshot,
+		public diaryTitle: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly command?: vscode.Command
 	) {

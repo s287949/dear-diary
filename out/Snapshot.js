@@ -10,13 +10,14 @@ class Diary {
 }
 exports.Diary = Diary;
 class Snapshot {
-    constructor(title, code, comment, scripts, files, dependencies) {
+    constructor(title, code, comment, scripts, files, dependencies, extension) {
         this.title = title;
         this.code = code;
         this.comment = comment;
         this.scripts = scripts;
         this.files = files;
         this.dependencies = dependencies;
+        this.extension = extension;
     }
 }
 exports.Snapshot = Snapshot;

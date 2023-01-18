@@ -28,7 +28,7 @@ function activate(context) {
     const snapshotsProvider = new snapshotsProvider_1.SnapshotsProvider(context);
     vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
     vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
-    //Open file showing code snapshotted
+    //Open file showing code/file snapshotted
     vscode.commands.registerCommand('extension.openSnapshot', async (snap, diary) => {
         const nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies);
         vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
@@ -37,10 +37,9 @@ function activate(context) {
         const nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
         if (diary.type !== "project") {
-            var t = snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot.txt";
-            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + ".txt" : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot.txt");
+            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
             vscode.workspace.onDidOpenTextDocument((a) => {
-                let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + ".txt" : "C:\\" + diary.title + "\\" + "code snapshot.txt";
+                let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension;
                 if (a.fileName === fn) {
                     vscode.window.showTextDocument(a, 1, false).then(e => {
                         e.edit(edit => {
@@ -91,32 +90,35 @@ function activate(context) {
             debugger;
         });
     });
-    //save changes to a comment
+    //Save changes to a comment
     vscode.commands.registerCommand('extension.saveChanges', script => {
         context.globalState.update("snaps", snaps);
+        vscode.commands.executeCommand("dear-diary.refreshSnapshots");
     });
-    //close the project snapshot previously opened and go back to the version of the code in act before selecting it
+    //Close the project snapshot previously opened and go back to the version of the code in act before selecting it
     vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-        if (!tc) {
+        /*if(!tc){
             vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
             return;
-        }
+        }*/
         let command = "";
         let output;
         command = "cd " + rootPath + " && git checkout master";
         output = await execShell(command);
-        if (output === "error") {
+        /*if (output === "error") {
             vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
         }
         else {
             tc = false;
-        }
+        }*/
+        tc = false;
     });
     //Comment webview implementation
     const commentProvider = new CommentViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
-    vscode.commands.registerCommand('dear-diary.comment', () => {
-        vscode.commands.executeCommand('comment.focus');
+    vscode.commands.registerCommand('dear-diary.comment', async (node) => {
+        await vscode.commands.executeCommand('comment.focus');
+        commentProvider.setComment(node.snap, node.diaryTitle);
     });
     //create a new project snapshot using git
     vscode.commands.registerCommand('dear-diary.new-terminal', async (type, snapNo, ns) => {
@@ -165,6 +167,7 @@ function activate(context) {
                     vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
                         const qis = await (0, multiStepInputNewSnapshot_1.newCodeSnapshot)(context);
                         let fileTree = [];
+                        let packagePath = [];
                         const editor = vscode.window.activeTextEditor;
                         let code;
                         if (editor) {
@@ -181,8 +184,9 @@ function activate(context) {
                                 return;
                             }
                             let fileName = document.fileName;
+                            let ext = vscode.window.activeTextEditor?.document.languageId ? vscode.window.activeTextEditor?.document.languageId : "txt";
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, type);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -192,14 +196,20 @@ function activate(context) {
                                 vscode.window.showErrorMessage("Error: No code selected for the snapshot");
                             }
                             else {
-                                context.globalState.update("snaps", []);
+                                //context.globalState.update("snaps", []);
                                 snaps = context.globalState.get("snaps");
                                 if (!snaps) {
                                     context.globalState.update("snaps", []);
                                     snaps = [];
                                 }
                                 //get dependencies
-                                let deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                                let deps = [];
+                                if (packagePath.length > 0) {
+                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(packagePath[0].replace(/\\package\.json/, ''));
+                                }
+                                else {
+                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                                }
                                 //get command line scripts
                                 let scripts = [];
                                 const terminals = vscode.window.terminals;
@@ -218,13 +228,13 @@ function activate(context) {
                                 });
                                 //creating snapshot and adding it to the array of snapshots
                                 if (type === 1) {
-                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "code"));
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext)], "code"));
                                 }
                                 else if (type === 2) {
-                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps)], "file"));
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext)], "file"));
                                 }
                                 else if (type === 3) {
-                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps, "");
                                     if (fileTree[0].name === ".git") {
                                         const selection = await vscode.window.showWarningMessage("Git repository already existing, creating the new diary the repo will be deleted, continue?", "Continue anyway", "Cancel");
                                         if (selection !== null) {
@@ -276,6 +286,7 @@ function activate(context) {
                         const qis = await (0, multiStepInputNewPhase_1.newCodePhase)(context);
                         let fileTree = [];
                         let type = 0;
+                        let packagePath = [];
                         switch (node.type) {
                             case "code":
                                 type = 1;
@@ -303,8 +314,9 @@ function activate(context) {
                                 return;
                             }
                             let fileName = document.fileName;
+                            let ext = vscode.window.activeTextEditor?.document.languageId ? vscode.window.activeTextEditor?.document.languageId : "txt";
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, type);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -314,7 +326,14 @@ function activate(context) {
                                 vscode.window.showErrorMessage("Error: No code selected for the new snapshot");
                             }
                             else {
-                                let deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                                //get dependencies
+                                let deps = [];
+                                if (packagePath.length > 0) {
+                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(packagePath[0].replace(/\\package\.json/, ''));
+                                }
+                                else {
+                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                                }
                                 //get command line scripts
                                 let scripts = [];
                                 const terminals = vscode.window.terminals;
@@ -331,12 +350,12 @@ function activate(context) {
                                         }
                                     });
                                 });
-                                //creating snapshot and adding it to the array of snapshots
+                                //creating snapshot and adding it to the array of snapshots (aka diary)
                                 if (type === 1 || type === 2) {
-                                    node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps));
+                                    node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext));
                                 }
                                 else if (type === 3) {
-                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps);
+                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps, "");
                                     await vscode.commands.executeCommand('dear-diary.new-terminal', 2, node.ref.snapshots.length + 1, ns);
                                     if (ns.code === "") {
                                         vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
@@ -365,7 +384,7 @@ function activate(context) {
     });
 }
 exports.activate = activate;
-function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type) {
+function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type, packagePath) {
     let output = [];
     // return if path to target is not valid
     if (!fs.existsSync(selectedRootPath)) {
@@ -393,23 +412,22 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
         const isLastDirInTree = isDirectory && lastItem;
         let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
         if (isDirectory) {
+            if (fullPath.replace(/^.*[\\\/]/, '') === "node_modules") {
+                return;
+            }
             if (originalFilePath.includes(fullPath) && type !== 3) {
                 fsInst.fileSnapshoted = true;
             }
             if (!fsInst.name.startsWith(".", 0)) {
-                fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type);
+                fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type, packagePath);
             }
         }
         else {
+            if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
+                packagePath.push(fullPath);
+            }
             if (fullPath === originalFilePath && type !== 3) {
                 fsInst.fileSnapshoted = true;
-            }
-            else if (type === 3) {
-                vscode.workspace.findFiles("*").then((doc) => {
-                    vscode.workspace.openTextDocument(doc[0]).then((d) => {
-                        fsInst.snap = d.getText();
-                    });
-                });
             }
         }
         output.push(fsInst);
@@ -504,7 +522,7 @@ NewSnapshotsViewProvider.viewType = 'new-snapshots';
 class CommentViewProvider {
     constructor(_extensionUri) {
         this._extensionUri = _extensionUri;
-        this.snap = new Snapshot_1.Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], []);
+        this.snap = new Snapshot_1.Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "");
         this.snapSelected = false;
     }
     resolveWebviewView(webviewView, context, _token) {
