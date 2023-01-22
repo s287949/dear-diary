@@ -31,13 +31,13 @@ class FilesNodeProvider {
     getFiles(f) {
         const toFile = (file) => {
             if (file.type === "dir" && file.snap) {
-                return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
+                return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
                     command: 'extension.openFile',
                     title: '',
                     arguments: [file]
                 });
             }
-            return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+            return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
         };
         const fs = f ? f.map(file => toFile(file)) : [];
         return fs;
@@ -45,13 +45,17 @@ class FilesNodeProvider {
 }
 exports.FilesNodeProvider = FilesNodeProvider;
 class FileItem extends vscode.TreeItem {
-    constructor(label, subfiles, collapsibleState, command) {
+    constructor(label, subfiles, file, collapsibleState, command) {
         super(label, collapsibleState);
         this.label = label;
         this.subfiles = subfiles;
+        this.file = file;
         this.collapsibleState = collapsibleState;
         this.command = command;
-        this.contextValue = 'file';
+        collapsibleState === vscode.TreeItemCollapsibleState.None ? this.contextValue = 'file' : this.contextValue = 'folder';
+        if (file.comment !== "") {
+            this.description = "commented";
+        }
     }
 }
 exports.FileItem = FileItem;

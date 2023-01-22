@@ -118,6 +118,21 @@
 					"command": "dear-diary.comment",
 					"when": "view == snapshots && viewItem == snapshot",
 					"group": "inline"
+				},
+				{
+					"command": "dear-diary.comment",
+					"when": "view == command-line-scripts && viewItem == script",
+					"group": "inline"
+				},
+				{
+					"command": "dear-diary.comment",
+					"when": "view == dependencies && viewItem == dependency",
+					"group": "inline"
+				},
+				{
+					"command": "dear-diary.comment",
+					"when": "view == files && viewItem == file",
+					"group": "inline"
 				}
 			]
 		}

@@ -14,7 +14,7 @@ function getDepsInPackageJson(workspaceRoot) {
     if (pathExists(packageJsonPath)) {
         const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
         const toDep = (moduleName, version) => {
-            return new Snapshot_1.Resource(moduleName, version, "dependency");
+            return new Snapshot_1.Resource(moduleName, version, "dependency", "");
         };
         const deps = packageJson.dependencies
             ? Object.keys(packageJson.dependencies).map(dep => toDep(dep, packageJson.dependencies[dep]))

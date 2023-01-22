@@ -3,10 +3,10 @@
 import * as vscode from 'vscode';
 import { newCodeSnapshot } from './multiStepInputNewSnapshot';
 import { newCodePhase } from './multiStepInputNewPhase';
-import { DepNodeProvider } from './dependenciesProvider';
+import { DependencyItem, DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider, DiaryItem, SnapshotItem } from './snapshotsProvider';
-import { FilesNodeProvider } from './filesProvider';
-import { ScriptsProvider } from './scriptsProvider';
+import { FileItem, FilesNodeProvider } from './filesProvider';
+import { ScriptItem, ScriptsProvider } from './scriptsProvider';
 import { Diary, Snapshot, FSInstance, Resource } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
 import * as fs from 'fs';
@@ -27,18 +27,28 @@ export function activate(context: vscode.ExtensionContext) {
 
 	var tc = false; // variable for temporary commit in case the user checks out to a project snapshot
 
+	const commentProvider = new CommentViewProvider(context.extensionUri);
+	context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
+
 	//Providing Snapshots to the related view
 	const snapshotsProvider = new SnapshotsProvider(context);
 	vscode.window.registerTreeDataProvider('snapshots', snapshotsProvider);
 	vscode.commands.registerCommand('dear-diary.refreshSnapshots', () => snapshotsProvider.refresh());
+	var nodeDependenciesProvider: DepNodeProvider;
+	vscode.commands.registerCommand('dear-diary.refreshDependencies', () => nodeDependenciesProvider.refresh());
+	var nodeScriptsProvider: ScriptsProvider;
+	vscode.commands.registerCommand('dear-diary.refreshScripts', () => nodeScriptsProvider.refresh());
+	var nodeFilesProvider: FilesNodeProvider;
+	vscode.commands.registerCommand('dear-diary.refreshFiles', () => nodeFilesProvider.refresh());
 	//Open file showing code/file snapshotted
 	vscode.commands.registerCommand('extension.openSnapshot', async (snap: Snapshot, diary: Diary) => {
-		const nodeDependenciesProvider = new DepNodeProvider(snap.dependencies!);
+		nodeDependenciesProvider = new DepNodeProvider(snap.dependencies!);
 		vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
-		const nodeScriptsProvider = new ScriptsProvider(snap.scripts!);
+		nodeScriptsProvider = new ScriptsProvider(snap.scripts!);
 		vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
-		const nodeFilesProvider = new FilesNodeProvider(snap.files!);
+		nodeFilesProvider = new FilesNodeProvider(snap.files!);
 		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
+		commentProvider.setComment(snap, diary.title);
 		if (diary.type !== "project") {
 			var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
 			vscode.workspace.onDidOpenTextDocument((a) => {
@@ -99,9 +109,21 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	//Save changes to a comment
-	vscode.commands.registerCommand('extension.saveChanges', script => {
+	vscode.commands.registerCommand('extension.saveChanges', (type: string) => {
 		context.globalState.update("snaps", snaps);
-		vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+		
+		if(type === "snapshot"){
+			vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+		}
+		else if(type === "dependency"){
+			vscode.commands.executeCommand("dear-diary.refreshDependencies");
+		}
+		else if(type === "script"){
+			vscode.commands.executeCommand("dear-diary.refreshScripts");
+		}
+		else if(type === "file"){
+			vscode.commands.executeCommand("dear-diary.refreshFiles");
+		}
 	});
 
 	//Close the project snapshot previously opened and go back to the version of the code in act before selecting it
@@ -124,11 +146,20 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	//Comment webview implementation
-	const commentProvider = new CommentViewProvider(context.extensionUri);
-	context.subscriptions.push(vscode.window.registerWebviewViewProvider(CommentViewProvider.viewType, commentProvider));
-	vscode.commands.registerCommand('dear-diary.comment', async (node: SnapshotItem) => {
+	vscode.commands.registerCommand('dear-diary.comment', async (node: SnapshotItem | DependencyItem | ScriptItem | FileItem) => {
 		await vscode.commands.executeCommand('comment.focus');
-		commentProvider.setComment(node.snap, node.diaryTitle);
+		if(node instanceof SnapshotItem){
+			commentProvider.setComment(node.snap, node.diaryTitle);
+		}
+		else if(node instanceof DependencyItem){
+			commentProvider.setDepComment(node.dep);
+		}
+		else if(node instanceof ScriptItem){
+			commentProvider.setScriptComment(node.script);
+		}
+		else if(node instanceof FileItem){
+			commentProvider.setFileComment(node.file);
+		} 
 	});
 
 	//create a new project snapshot using git
@@ -244,7 +275,7 @@ export function activate(context: vscode.ExtensionContext) {
 									scrts.forEach((i) => {
 										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
 										if (s && s.trim() !== '') {
-											scripts.push(new Resource(s.split("\r\n")[0], s, "script"));
+											scripts.push(new Resource(s.split("\r\n")[0], s, "script", ""));
 										}
 									});
 								});
@@ -379,7 +410,7 @@ export function activate(context: vscode.ExtensionContext) {
 									scrts.forEach((i) => {
 										let s = i.replace(new RegExp(/.*PS C:\\.*>/), "").trim();
 										if (s && s.trim() !== '') {
-											scripts.push(new Resource(s.split("\r\n")[0], s, "script"));
+											scripts.push(new Resource(s.split("\r\n")[0], s, "script", ""));
 										}
 									});
 								});
@@ -453,7 +484,7 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 		const isDirectory = fs.statSync(fullPath).isDirectory();
 		const isLastDirInTree = isDirectory && lastItem;
 
-		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", []);
+		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", [], "");
 
 		if (isDirectory) {
 			if(fullPath.replace(/^.*[\\\/]/, '') === "node_modules"){
@@ -589,7 +620,10 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 	private _view?: vscode.WebviewView;
 
 	private snap: Snapshot = new Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "");
-	private snapSelected: boolean = false;
+	private dep: Resource = new Resource("", "", "", "");
+	private script: Resource = new Resource("", "", "", "");
+	private fi: FSInstance = new FSInstance("", "", false, "", [], "");
+	private type = "";
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -617,8 +651,23 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 			switch (data.type) {
 				case 'saveComment':
 					{
-						this.snap.comment = data.value;
-						vscode.commands.executeCommand("extension.saveChanges");
+						if(this.type === "snapshot"){
+							this.snap.comment = data.value;
+							vscode.commands.executeCommand("extension.saveChanges", this.type);
+						}
+						else if (this.type === "dependency"){
+							this.dep.comment = data.value;
+							vscode.commands.executeCommand("extension.saveChanges", this.type);
+						}
+						else if (this.type === "script"){
+							this.script.comment = data.value;
+							vscode.commands.executeCommand("extension.saveChanges", this.type);
+						}
+						else if (this.type === "file"){
+							this.fi.comment = data.value;
+							vscode.commands.executeCommand("extension.saveChanges", this.type);
+						}
+						
 						break;
 					};
 			}
@@ -627,10 +676,37 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 
 	public setComment(s: Snapshot, d: string) {
 		this.snap = s;
-		this.snapSelected = true;
+		this.type="snapshot";
 
 		if (this._view) {
 			this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d } });
+		}
+	}
+
+	public setDepComment(n: Resource) {
+		this.dep = n;
+		this.type="dependency";
+
+		if (this._view) {
+			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type } });
+		}
+	}
+
+	public setScriptComment(n: Resource) {
+		this.script = n;
+		this.type="script";
+
+		if (this._view) {
+			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type } });
+		}
+	}
+
+	public setFileComment(n: FSInstance) {
+		this.fi = n;
+		this.type="file";
+
+		if (this._view) {
+			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type } });
 		}
 	}
 
@@ -666,7 +742,8 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				<title>Comment</title>
 			</head>
 			<body>
-				<h2 id="label"></h2>	
+				<h2 id="label"></h2>
+				<h3 id="sublabel"></h3>
 				<div id="card" class="card">
 					<div class="container">
 						<pre class="text-box">Select a snapshot to view and edit the comment</pre>

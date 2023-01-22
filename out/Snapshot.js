@@ -22,20 +22,22 @@ class Snapshot {
 }
 exports.Snapshot = Snapshot;
 class Resource {
-    constructor(module, version, type) {
+    constructor(module, version, type, comment) {
         this.moduleOrCommand = module;
         this.versionOrOutput = version;
         this.type = type;
+        this.comment = comment;
     }
 }
 exports.Resource = Resource;
 class FSInstance {
-    constructor(name, type, fileSnapped, snap, subI) {
+    constructor(name, type, fileSnapped, snap, subI, comment) {
         this.name = name;
         this.type = type;
         this.fileSnapshoted = fileSnapped;
         this.snap = snap;
         this.subInstances = subI;
+        this.comment = comment;
     }
 }
 exports.FSInstance = FSInstance;

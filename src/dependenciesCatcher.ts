@@ -16,7 +16,7 @@ export function getDepsInPackageJson(workspaceRoot: string | undefined): Resourc
 		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 
 		const toDep = (moduleName: string, version: string): Resource => {
-			return new Resource(moduleName, version, "dependency");
+			return new Resource(moduleName, version, "dependency", "");
 		};
 
 		const deps = packageJson.dependencies

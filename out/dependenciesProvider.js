@@ -30,19 +30,20 @@ class DepNodeProvider {
      * Gets the dependencies in input and trasform them in DependencyItem in order to be dispalyed
      */
     getDeps() {
-        const toDep = (module, version) => {
-            return new DependencyItem(module, version, vscode.TreeItemCollapsibleState.None);
+        const toDep = (dep, module, version) => {
+            return new DependencyItem(module, version, dep, vscode.TreeItemCollapsibleState.None);
         };
-        const ds = this.deps ? this.deps.map(dep => toDep(dep.moduleOrCommand, dep.versionOrOutput)) : [];
+        const ds = this.deps ? this.deps.map(dep => toDep(dep, dep.moduleOrCommand, dep.versionOrOutput)) : [];
         return ds;
     }
 }
 exports.DepNodeProvider = DepNodeProvider;
 class DependencyItem extends vscode.TreeItem {
-    constructor(label, version, collapsibleState) {
+    constructor(label, version, dep, collapsibleState) {
         super(label, collapsibleState);
         this.label = label;
         this.version = version;
+        this.dep = dep;
         this.collapsibleState = collapsibleState;
         this.iconPath = {
             light: path.join(__filename, '..', '..', 'resources', 'light', 'dependency.svg'),
@@ -50,7 +51,12 @@ class DependencyItem extends vscode.TreeItem {
         };
         this.contextValue = 'dependency';
         this.tooltip = `${this.label}-${this.version}`;
-        this.description = this.version;
+        if (dep.comment !== "") {
+            this.description = this.version + " - commented";
+        }
+        else {
+            this.description = this.version;
+        }
     }
 }
 exports.DependencyItem = DependencyItem;

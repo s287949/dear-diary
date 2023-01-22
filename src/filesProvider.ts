@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { FSInstance } from './Snapshot';
+import { FSInstance, Resource } from './Snapshot';
 
 export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 
@@ -36,13 +36,13 @@ export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 	private getFiles(f: FSInstance[]): FileItem[] {
 		const toFile = (file: FSInstance): FileItem => {
 			if(file.type==="dir" && file.snap){
-				return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
+				return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
 					command: 'extension.openFile',
 					title: '',
 					arguments: [file]
 				});
 			}
-			return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+			return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
 		};
 		
 		const fs = f? f.map(file => toFile(file)) : [];
@@ -56,11 +56,18 @@ export class FileItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: vscode.TreeItemLabel,
 		public readonly subfiles: FSInstance[],
+		public file: FSInstance,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly command?: vscode.Command
 	) {
 		super(label, collapsibleState);
+		collapsibleState === vscode.TreeItemCollapsibleState.None? this.contextValue = 'file' : this.contextValue = 'folder';
+
+		if(file.comment!==""){
+			this.description="commented";
+		}
 	}
 
-	contextValue = 'file';
+	
+	//contextValue = 'file';
 }

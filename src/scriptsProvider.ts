@@ -35,7 +35,7 @@ export class ScriptsProvider implements vscode.TreeDataProvider<ScriptItem> {
 	 */
 	private getScripts(): ScriptItem[] {
 		const toScript = (script:Resource): ScriptItem => {
-			return new ScriptItem(script.moduleOrCommand, vscode.TreeItemCollapsibleState.None, {
+			return new ScriptItem(script.moduleOrCommand, script, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openScript',
 				title: '',
 				arguments: [script]
@@ -54,10 +54,15 @@ export class ScriptItem extends vscode.TreeItem {
 
 	constructor(
 		public readonly label: string,
+		public script: Resource,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly command?: vscode.Command
 	) {
 		super(label, collapsibleState);
+
+		if(script.comment!==""){
+			this.description="commented";
+		}
 	}
 
 	iconPath = {

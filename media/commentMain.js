@@ -10,7 +10,10 @@
         editComment();
     });
 
-    let comment="";
+    let comment = "";
+    let type = "";
+    let openSnap = "";
+    let openDiary = "";
 
     // Handle messages sent from the extension to the webview
     window.addEventListener('message', event => {
@@ -18,20 +21,81 @@
         switch (message.type) {
             case 'comment':
                 {
-                    var snap = message.relatedData.snap;
-                    var dTitle = message.relatedData.diaryTitle;
-                    const lab = document.querySelector('#label');
-                    lab.textContent = "Diary/Snapshot: "+dTitle+"/"+snap.title;
-                    const com = document.querySelector('.text-box');
-                    if(snap.comment!==""){
-                        com.textContent = snap.comment;
-                        comment = snap.comment;
+                    if (message.relatedData.snap) {
+                        type = "snapshot";
+                        var snap = message.relatedData.snap;
+                        openSnap = snap.title;
+                        var dTitle = message.relatedData.diaryTitle;
+                        openDiary = dTitle;
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + dTitle + "/" + snap.title;
+                        const sublab = document.querySelector('#sublabel');
+                        sublab.textContent = "";
+                        const com = document.querySelector('.text-box');
+                        if (snap.comment !== "") {
+                            com.textContent = snap.comment;
+                            comment = snap.comment;
+                        }
+                        else {
+                            com.textContent = "";
+                            comment = "";
+                        }
                     }
-                    else {
-                        com.textContent = "";
+                    else if(message.relatedData.type === "dependency"){
+                        type = "dependency";
+                        var res = message.relatedData.res; //Resource
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + openDiary + "/" + openSnap;
+                        const sublab = document.querySelector('#sublabel');
+                        sublab.textContent = "Dependency: " + res.moduleOrCommand;
+                        const com = document.querySelector('.text-box');
+                        if (res.comment !== "") {
+                            com.textContent = res.comment;
+                            comment = res.comment;
+                        }
+                        else {
+                            com.textContent = "";
+                            comment = "";
+                        }
                     }
-                    
-                    document.querySelector('#editbtn').className = "edit-comment-button"; 
+                    else if(message.relatedData.type === "script"){
+                        type = "script";
+                        var res = message.relatedData.res; //Resource
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + openDiary + "/" + openSnap;
+                        const sublab = document.querySelector('#sublabel');
+                        sublab.textContent = "Script: " + res.moduleOrCommand;
+                        const com = document.querySelector('.text-box');
+                        if (res.comment !== "") {
+                            com.textContent = res.comment;
+                            comment = res.comment;
+                        }
+                        else {
+                            com.textContent = "";
+                            comment = "";
+                        }
+                    }
+                    else if(message.relatedData.type === "file"){
+                        type = "file";
+                        comment = "";
+                        var res = message.relatedData.res; //FSInstance
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + openDiary + "/" + openSnap;
+                        const sublab = document.querySelector('#sublabel');
+                        sublab.textContent = "File: " + res.name;
+                        const com = document.querySelector('.text-box');
+                        if (res.comment !== "") {
+                            com.textContent = res.comment;
+                            comment = res.comment;
+                        }
+                        else {
+                            com.textContent = "";
+                            comment = "";
+                        }
+                    }
+
+
+                    document.querySelector('#editbtn').className = "edit-comment-button";
                     break;
                 }
         }
@@ -45,7 +109,7 @@
         //input text box for editing the comment appears
         const frm = document.querySelector('#comment-box');
         const input = document.createElement('textarea');
-        input.rows=10;
+        input.rows = 10;
         input.textContent = comment;
         frm?.appendChild(input);
         input.addEventListener('change', (e) => {
@@ -71,7 +135,7 @@
 
     }
 
-    function cancelComment(editB, cancelB, saveB, c, inp){
+    function cancelComment(editB, cancelB, saveB, c, inp) {
         editB.className = "edit-comment-button";
         cancelB.className = "ghost";
         saveB.className = "ghost";
@@ -79,7 +143,7 @@
         inp.className = "ghost";
     }
 
-    function saveComment(editB, cancelB, saveB, c, inp){
+    function saveComment(editB, cancelB, saveB, c, inp) {
         vscode.postMessage({ type: 'saveComment', value: comment });
         const com = document.querySelector('.text-box');
         com.textContent = comment;

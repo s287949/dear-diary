@@ -34,11 +34,11 @@ export class DepNodeProvider implements vscode.TreeDataProvider<DependencyItem> 
 	 * Gets the dependencies in input and trasform them in DependencyItem in order to be dispalyed
 	 */
 	private getDeps(): DependencyItem[] {
-		const toDep = (module:string, version:string): DependencyItem => {
-			return new DependencyItem(module, version, vscode.TreeItemCollapsibleState.None);
+		const toDep = (dep: Resource, module:string, version:string): DependencyItem => {
+			return new DependencyItem(module, version, dep, vscode.TreeItemCollapsibleState.None);
 		};
 
-		const ds = this.deps? this.deps.map(dep => toDep(dep.moduleOrCommand, dep.versionOrOutput)) : [];
+		const ds = this.deps? this.deps.map(dep => toDep(dep, dep.moduleOrCommand, dep.versionOrOutput)) : [];
 		
 		return ds;
 	}
@@ -49,13 +49,20 @@ export class DependencyItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,
 		private readonly version: string,
+		public dep: Resource,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		//public readonly command?: vscode.Command
 	) {
 		super(label, collapsibleState);
 
 		this.tooltip = `${this.label}-${this.version}`;
-		this.description = this.version;
+		
+		if(dep.comment!==""){
+			this.description=this.version +" - commented";
+		}
+		else{
+			this.description = this.version;
+		}
 	}
 
 	iconPath = {
