@@ -61,3 +61,15 @@ export class FSInstance{
 		this.comment = comment;
 	}
 }
+
+export class ResCommented{
+	files: FSInstance[];
+	scripts: Resource[];
+	dependencies: Resource[];
+
+	public constructor(fs: FSInstance[], ss: Resource[], ds: Resource[]){
+		this.files = fs;
+		this.scripts = ss;
+		this.dependencies = ds;
+	}
+}

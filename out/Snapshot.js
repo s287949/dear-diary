@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FSInstance = exports.Resource = exports.Snapshot = exports.Diary = void 0;
+exports.ResCommented = exports.FSInstance = exports.Resource = exports.Snapshot = exports.Diary = void 0;
 class Diary {
     constructor(title, phases, type) {
         this.title = title;
@@ -41,4 +41,12 @@ class FSInstance {
     }
 }
 exports.FSInstance = FSInstance;
+class ResCommented {
+    constructor(fs, ss, ds) {
+        this.files = fs;
+        this.scripts = ss;
+        this.dependencies = ds;
+    }
+}
+exports.ResCommented = ResCommented;
 //# sourceMappingURL=Snapshot.js.map

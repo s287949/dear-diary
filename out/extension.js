@@ -20,6 +20,7 @@ let terminalData = {};
 // your extension is activated the very first time the command is executed
 function activate(context) {
     let snaps = context.globalState.get("snaps");
+    let resCommented = new Snapshot_1.ResCommented([], [], []);
     //Show dependencies in the Dependencies view
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -38,13 +39,12 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.refreshFiles', () => nodeFilesProvider.refresh());
     //Open file showing code/file snapshotted
     vscode.commands.registerCommand('extension.openSnapshot', async (snap, diary) => {
-        nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies);
+        nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies, resCommented);
         vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
-        nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(snap.scripts);
+        nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(snap.scripts, resCommented);
         vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
-        nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files);
+        nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files, resCommented);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
-        commentProvider.setComment(snap, diary.title);
         if (diary.type !== "project") {
             var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
             vscode.workspace.onDidOpenTextDocument((a) => {
@@ -79,7 +79,7 @@ function activate(context) {
                 vscode.window.showErrorMessage("Error: Could not open snapshot");
             }
         }
-        commentProvider.setComment(snap, diary.title);
+        commentProvider.setComment(snap, diary.title, resCommented);
     });
     //Open file showing the command line script and the output
     vscode.commands.registerCommand('extension.openScript', script => {
@@ -137,7 +137,7 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.comment', async (node) => {
         await vscode.commands.executeCommand('comment.focus');
         if (node instanceof snapshotsProvider_1.SnapshotItem) {
-            commentProvider.setComment(node.snap, node.diaryTitle);
+            commentProvider.setComment(node.snap, node.diaryTitle, resCommented);
         }
         else if (node instanceof dependenciesProvider_1.DependencyItem) {
             commentProvider.setDepComment(node.dep);
@@ -556,6 +556,8 @@ class CommentViewProvider {
         this.script = new Snapshot_1.Resource("", "", "", "");
         this.fi = new Snapshot_1.FSInstance("", "", false, "", [], "");
         this.type = "";
+        this.dTitle = "";
+        this.otherComs = new Snapshot_1.ResCommented([], [], []);
     }
     resolveWebviewView(webviewView, context, _token) {
         this._view = webviewView;
@@ -590,14 +592,70 @@ class CommentViewProvider {
                         break;
                     }
                     ;
+                case 'saveOtherComment':
+                    {
+                        let val = data.val;
+                        if (val.type === 'script') {
+                            this.otherComs.scripts[val.index].comment = val.newCom;
+                            if (val.newCom === "") {
+                                this.otherComs.scripts.splice(val.index, 1);
+                            }
+                            vscode.commands.executeCommand("extension.saveChanges", "script");
+                            this.setComment(this.snap, this.dTitle, this.otherComs);
+                        }
+                        else if (val.type === 'file') {
+                            this.otherComs.files[val.index].comment = val.newCom;
+                            if (val.newCom === "") {
+                                this.otherComs.files.splice(val.index, 1);
+                            }
+                            vscode.commands.executeCommand("extension.saveChanges", "file");
+                            this.setComment(this.snap, this.dTitle, this.otherComs);
+                        }
+                        else if (val.type === 'dependency') {
+                            this.otherComs.dependencies[val.index].comment = val.newCom;
+                            if (val.newCom === "") {
+                                this.otherComs.dependencies.splice(val.index, 1);
+                            }
+                            vscode.commands.executeCommand("extension.saveChanges", "dependency");
+                            this.setComment(this.snap, this.dTitle, this.otherComs);
+                        }
+                        break;
+                    }
+                    ;
             }
         });
     }
-    setComment(s, d) {
+    setComment(s, d, ss) {
         this.snap = s;
         this.type = "snapshot";
+        this.otherComs = ss;
+        this.dTitle = d;
+        ss.dependencies.splice(0, ss.dependencies.length);
+        ss.scripts.splice(0, ss.scripts.length);
+        ss.files.splice(0, ss.files.length);
+        for (const deps of s.dependencies) {
+            if (deps.comment !== "") {
+                ss.dependencies.push(deps);
+            }
+        }
+        for (const scrs of s.scripts) {
+            if (scrs.comment !== "") {
+                ss.scripts.push(scrs);
+            }
+        }
+        this.searchFiles(s.files, ss);
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d } });
+            this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d, coms: ss } });
+        }
+    }
+    searchFiles(f, s2) {
+        for (const f2 of f) {
+            if (f2.type === "folder") {
+                this.searchFiles(f2.subInstances, s2);
+            }
+            else if (f2.comment !== "") {
+                s2.files.push(f2);
+            }
         }
     }
     setDepComment(n) {
@@ -650,7 +708,7 @@ class CommentViewProvider {
 				<title>Comment</title>
 			</head>
 			<body>
-				<h2 id="label"></h2>
+				<h1 id="label"></h1>
 				<h3 id="sublabel"></h3>
 				<div id="card" class="card">
 					<div class="container">
@@ -659,12 +717,30 @@ class CommentViewProvider {
 				</div>
 
 				<form id="comment-box">
+					<textarea id="text-area" class="ghost"></textarea>
 				</form>
 
 				<div class="buttons-row">				
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="ghost">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
+				</div>
+
+				<div id="lists">
+					<h2 id="scripts-label" class="ghost">Scripts comments</h2>
+					<ul id="scripts-list">
+						<div id="del1"></div>
+					</ul>
+
+					<h2 id="files-label" class="ghost">Files comments</h2>
+					<ul id="files-list">
+						<div id="del2"></div>
+					</ul>
+
+					<h2 id="dependencies-label" class="ghost">Dependencies comments</h2>
+					<ul id="dependencies-list">
+						<div id="del3"></div>
+					</ul>
 				</div>
 				
 				<script nonce="${nonce}" src="${scriptUri}"></script>

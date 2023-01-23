@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Resource } from './Snapshot';
+import { Resource, ResCommented } from './Snapshot';
 
 export class DepNodeProvider implements vscode.TreeDataProvider<DependencyItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<DependencyItem | undefined | void> = new vscode.EventEmitter<DependencyItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<DependencyItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private deps: Resource[] | undefined) {
+	constructor(private deps: Resource[] | undefined, public r: ResCommented) {
 	}
 
 	refresh(): void {

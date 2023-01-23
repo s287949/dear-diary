@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Resource } from './Snapshot';
+import { Resource, ResCommented } from './Snapshot';
 
 export class ScriptsProvider implements vscode.TreeDataProvider<ScriptItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<ScriptItem | undefined | void> = new vscode.EventEmitter<ScriptItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<ScriptItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private scripts: Resource[] | undefined) {
+	constructor(private scripts: Resource[] | undefined, private r: ResCommented) {
 	}
 
 	refresh(): void {

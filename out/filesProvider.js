@@ -3,8 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileItem = exports.FilesNodeProvider = void 0;
 const vscode = require("vscode");
 class FilesNodeProvider {
-    constructor(files) {
+    constructor(files, r) {
         this.files = files;
+        this.r = r;
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
     }

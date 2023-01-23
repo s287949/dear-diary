@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { FSInstance, Resource } from './Snapshot';
+import { FSInstance, ResCommented } from './Snapshot';
 
 export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<FileItem | undefined | void> = new vscode.EventEmitter<FileItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<FileItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private files: FSInstance[] | undefined) {
+	constructor(private files: FSInstance[] | undefined, private r: ResCommented) {
 	}
 
 	refresh(): void {

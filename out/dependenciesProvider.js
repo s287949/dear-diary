@@ -4,8 +4,9 @@ exports.DependencyItem = exports.DepNodeProvider = void 0;
 const vscode = require("vscode");
 const path = require("path");
 class DepNodeProvider {
-    constructor(deps) {
+    constructor(deps, r) {
         this.deps = deps;
+        this.r = r;
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
     }

@@ -7,11 +7,12 @@ import { DependencyItem, DepNodeProvider } from './dependenciesProvider';
 import { SnapshotsProvider, DiaryItem, SnapshotItem } from './snapshotsProvider';
 import { FileItem, FilesNodeProvider } from './filesProvider';
 import { ScriptItem, ScriptsProvider } from './scriptsProvider';
-import { Diary, Snapshot, FSInstance, Resource } from './Snapshot';
+import { Diary, Snapshot, FSInstance, Resource, ResCommented } from './Snapshot';
 import { getDepsInPackageJson } from './dependenciesCatcher';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from "child_process";
+import { isNullOrUndefined } from 'util';
 
 
 let terminalData = {};
@@ -21,6 +22,7 @@ let terminalData = {};
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	let snaps: Array<Diary> | undefined = context.globalState.get("snaps");
+	let resCommented = new ResCommented([], [], []);
 	//Show dependencies in the Dependencies view
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -42,13 +44,12 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('dear-diary.refreshFiles', () => nodeFilesProvider.refresh());
 	//Open file showing code/file snapshotted
 	vscode.commands.registerCommand('extension.openSnapshot', async (snap: Snapshot, diary: Diary) => {
-		nodeDependenciesProvider = new DepNodeProvider(snap.dependencies!);
+		nodeDependenciesProvider = new DepNodeProvider(snap.dependencies!, resCommented);
 		vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
-		nodeScriptsProvider = new ScriptsProvider(snap.scripts!);
+		nodeScriptsProvider = new ScriptsProvider(snap.scripts!, resCommented);
 		vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
-		nodeFilesProvider = new FilesNodeProvider(snap.files!);
+		nodeFilesProvider = new FilesNodeProvider(snap.files!, resCommented);
 		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
-		commentProvider.setComment(snap, diary.title);
 		if (diary.type !== "project") {
 			var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
 			vscode.workspace.onDidOpenTextDocument((a) => {
@@ -85,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 
-		commentProvider.setComment(snap, diary.title);
+		commentProvider.setComment(snap, diary.title, resCommented);
 	});
 
 	//Open file showing the command line script and the output
@@ -149,7 +150,7 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('dear-diary.comment', async (node: SnapshotItem | DependencyItem | ScriptItem | FileItem) => {
 		await vscode.commands.executeCommand('comment.focus');
 		if(node instanceof SnapshotItem){
-			commentProvider.setComment(node.snap, node.diaryTitle);
+			commentProvider.setComment(node.snap, node.diaryTitle, resCommented);
 		}
 		else if(node instanceof DependencyItem){
 			commentProvider.setDepComment(node.dep);
@@ -624,6 +625,8 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 	private script: Resource = new Resource("", "", "", "");
 	private fi: FSInstance = new FSInstance("", "", false, "", [], "");
 	private type = "";
+	private dTitle = "";
+	private otherComs: ResCommented = new ResCommented([], [], []);
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -670,16 +673,75 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 						
 						break;
 					};
+				case 'saveOtherComment':
+					{
+						let val = data.val;
+						if(val.type === 'script'){
+							this.otherComs.scripts[val.index].comment = val.newCom;
+							if(val.newCom===""){
+								this.otherComs.scripts.splice(val.index, 1);
+							}
+							vscode.commands.executeCommand("extension.saveChanges", "script");
+							this.setComment(this.snap, this.dTitle, this.otherComs);
+						}
+						else if(val.type === 'file'){
+							this.otherComs.files[val.index].comment = val.newCom;
+							if(val.newCom===""){
+								this.otherComs.files.splice(val.index, 1);
+							}
+							vscode.commands.executeCommand("extension.saveChanges", "file");
+							this.setComment(this.snap, this.dTitle, this.otherComs);
+						}
+						else if(val.type === 'dependency'){
+							this.otherComs.dependencies[val.index].comment = val.newCom;
+							if(val.newCom===""){
+								this.otherComs.dependencies.splice(val.index, 1);
+							}
+							vscode.commands.executeCommand("extension.saveChanges", "dependency");
+							this.setComment(this.snap, this.dTitle, this.otherComs);
+						}
+						
+						break;
+					};
 			}
 		});
 	}
 
-	public setComment(s: Snapshot, d: string) {
+	public setComment(s: Snapshot, d: string, ss: ResCommented) {
 		this.snap = s;
 		this.type="snapshot";
+		this.otherComs = ss;
+		this.dTitle = d;
+
+		ss.dependencies.splice(0,ss.dependencies.length);
+		ss.scripts.splice(0,ss.scripts.length);
+		ss.files.splice(0,ss.files.length);
+
+		for(const deps of s.dependencies){
+			if(deps.comment!==""){
+				ss.dependencies.push(deps);
+			}
+		}
+		for(const scrs of s.scripts){
+			if(scrs.comment!== ""){
+				ss.scripts.push(scrs);
+			}
+		}
+		this.searchFiles(s.files, ss);
 
 		if (this._view) {
-			this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d } });
+			this._view.webview.postMessage({ type: 'comment', relatedData: { snap: s, diaryTitle: d, coms: ss } });
+		}
+	}
+
+	public searchFiles(f: FSInstance[], s2:ResCommented){
+		for(const f2 of f){
+			if(f2.type==="folder"){
+				this.searchFiles(f2.subInstances, s2);
+			}
+			else if(f2.comment!==""){
+				s2.files.push(f2);
+			}
 		}
 	}
 
@@ -742,7 +804,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				<title>Comment</title>
 			</head>
 			<body>
-				<h2 id="label"></h2>
+				<h1 id="label"></h1>
 				<h3 id="sublabel"></h3>
 				<div id="card" class="card">
 					<div class="container">
@@ -751,12 +813,30 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 				</div>
 
 				<form id="comment-box">
+					<textarea id="text-area" class="ghost"></textarea>
 				</form>
 
 				<div class="buttons-row">				
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="ghost">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
+				</div>
+
+				<div id="lists">
+					<h2 id="scripts-label" class="ghost">Scripts comments</h2>
+					<ul id="scripts-list">
+						<div id="del1"></div>
+					</ul>
+
+					<h2 id="files-label" class="ghost">Files comments</h2>
+					<ul id="files-list">
+						<div id="del2"></div>
+					</ul>
+
+					<h2 id="dependencies-label" class="ghost">Dependencies comments</h2>
+					<ul id="dependencies-list">
+						<div id="del3"></div>
+					</ul>
 				</div>
 				
 				<script nonce="${nonce}" src="${scriptUri}"></script>
