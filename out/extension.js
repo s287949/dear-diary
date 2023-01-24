@@ -257,13 +257,13 @@ function activate(context) {
                                 });
                                 //creating snapshot and adding it to the array of snapshots
                                 if (type === 1) {
-                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext)], "code"));
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext, 0)], "code"));
                                 }
                                 else if (type === 2) {
-                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext)], "file"));
+                                    snaps.push(new Snapshot_1.Diary(qis.name, [new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext, 0)], "file"));
                                 }
                                 else if (type === 3) {
-                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps, "");
+                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps, "", 0);
                                     if (fileTree[0].name === ".git") {
                                         const selection = await vscode.window.showWarningMessage("Git repository already existing, creating the new diary the repo will be deleted, continue?", "Continue anyway", "Cancel");
                                         if (selection !== null) {
@@ -381,10 +381,10 @@ function activate(context) {
                                 });
                                 //creating snapshot and adding it to the array of snapshots (aka diary)
                                 if (type === 1 || type === 2) {
-                                    node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext));
+                                    node.ref.snapshots.push(new Snapshot_1.Snapshot(qis.phase, code, "", scripts, fileTree, deps, ext, 0));
                                 }
                                 else if (type === 3) {
-                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps, "");
+                                    let ns = new Snapshot_1.Snapshot(qis.phase, "", "", scripts, fileTree, deps, "", 0);
                                     await vscode.commands.executeCommand('dear-diary.new-terminal', 2, node.ref.snapshots.length + 1, ns);
                                     if (ns.code === "") {
                                         vscode.window.showErrorMessage("Error: Could not create new Project Snapshot");
@@ -551,7 +551,7 @@ NewSnapshotsViewProvider.viewType = 'new-snapshots';
 class CommentViewProvider {
     constructor(_extensionUri) {
         this._extensionUri = _extensionUri;
-        this.snap = new Snapshot_1.Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "");
+        this.snap = new Snapshot_1.Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "", 0);
         this.dep = new Snapshot_1.Resource("", "", "", "");
         this.script = new Snapshot_1.Resource("", "", "", "");
         this.fi = new Snapshot_1.FSInstance("", "", false, "", [], "");
@@ -574,21 +574,46 @@ class CommentViewProvider {
                 case 'saveComment':
                     {
                         if (this.type === "snapshot") {
+                            if (this.snap.comment === "" && data.value !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.snap.comment !== "" && data.value === "") {
+                                this.snap.nComments--;
+                            }
                             this.snap.comment = data.value;
                             vscode.commands.executeCommand("extension.saveChanges", this.type);
                         }
                         else if (this.type === "dependency") {
+                            if (this.dep.comment === "" && data.value !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.dep.comment !== "" && data.value === "") {
+                                this.snap.nComments--;
+                            }
                             this.dep.comment = data.value;
                             vscode.commands.executeCommand("extension.saveChanges", this.type);
                         }
                         else if (this.type === "script") {
+                            if (this.script.comment === "" && data.value !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.script.comment !== "" && data.value === "") {
+                                this.snap.nComments--;
+                            }
                             this.script.comment = data.value;
                             vscode.commands.executeCommand("extension.saveChanges", this.type);
                         }
                         else if (this.type === "file") {
+                            if (this.fi.comment === "" && data.value !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.fi.comment !== "" && data.value === "") {
+                                this.snap.nComments--;
+                            }
                             this.fi.comment = data.value;
                             vscode.commands.executeCommand("extension.saveChanges", this.type);
                         }
+                        console.log(this.dTitle + "/" + this.snap.title + ": " + this.snap.nComments);
                         break;
                     }
                     ;
@@ -596,6 +621,12 @@ class CommentViewProvider {
                     {
                         let val = data.val;
                         if (val.type === 'script') {
+                            if (this.otherComs.scripts[val.index].comment === "" && val.newCom !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.otherComs.scripts[val.index].comment !== "" && val.newCom === "") {
+                                this.snap.nComments--;
+                            }
                             this.otherComs.scripts[val.index].comment = val.newCom;
                             if (val.newCom === "") {
                                 this.otherComs.scripts.splice(val.index, 1);
@@ -604,21 +635,36 @@ class CommentViewProvider {
                             this.setComment(this.snap, this.dTitle, this.otherComs);
                         }
                         else if (val.type === 'file') {
+                            if (this.otherComs.files[val.index].comment === "" && val.newCom !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.otherComs.files[val.index].comment !== "" && val.newCom === "") {
+                                this.snap.nComments--;
+                            }
                             this.otherComs.files[val.index].comment = val.newCom;
                             if (val.newCom === "") {
                                 this.otherComs.files.splice(val.index, 1);
+                                this.snap.nComments--;
                             }
                             vscode.commands.executeCommand("extension.saveChanges", "file");
                             this.setComment(this.snap, this.dTitle, this.otherComs);
                         }
                         else if (val.type === 'dependency') {
+                            if (this.otherComs.dependencies[val.index].comment === "" && val.newCom !== "") {
+                                this.snap.nComments++;
+                            }
+                            else if (this.otherComs.dependencies[val.index].comment !== "" && val.newCom === "") {
+                                this.snap.nComments--;
+                            }
                             this.otherComs.dependencies[val.index].comment = val.newCom;
                             if (val.newCom === "") {
                                 this.otherComs.dependencies.splice(val.index, 1);
+                                this.snap.nComments--;
                             }
                             vscode.commands.executeCommand("extension.saveChanges", "dependency");
                             this.setComment(this.snap, this.dTitle, this.otherComs);
                         }
+                        console.log(this.dTitle + "/" + this.snap.title + ": " + this.snap.nComments);
                         break;
                     }
                     ;

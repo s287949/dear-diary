@@ -18,8 +18,9 @@ export class Snapshot {
 	files: FSInstance[];
 	dependencies: Resource[];
 	extension: string;
+	nComments: number;
 
-	public constructor(title: string, code: string, comment: string, scripts:Resource[], files:FSInstance[], dependencies: Resource[], extension: string) {
+	public constructor(title: string, code: string, comment: string, scripts:Resource[], files:FSInstance[], dependencies: Resource[], extension: string, nComments:number) {
 		this.title = title;
 		this.code = code;
 		this.comment = comment;
@@ -27,6 +28,7 @@ export class Snapshot {
 		this.files = files;
 		this.dependencies=dependencies;
 		this.extension = extension;
+		this.nComments = nComments;
 	}
 }
 

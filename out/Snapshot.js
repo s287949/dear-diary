@@ -10,7 +10,7 @@ class Diary {
 }
 exports.Diary = Diary;
 class Snapshot {
-    constructor(title, code, comment, scripts, files, dependencies, extension) {
+    constructor(title, code, comment, scripts, files, dependencies, extension, nComments) {
         this.title = title;
         this.code = code;
         this.comment = comment;
@@ -18,6 +18,7 @@ class Snapshot {
         this.files = files;
         this.dependencies = dependencies;
         this.extension = extension;
+        this.nComments = nComments;
     }
 }
 exports.Snapshot = Snapshot;
