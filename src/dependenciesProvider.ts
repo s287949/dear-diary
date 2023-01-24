@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Resource, ResCommented } from './Snapshot';
+import { Resource, ResCommented, Snapshot } from './Snapshot';
 
 export class DepNodeProvider implements vscode.TreeDataProvider<DependencyItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<DependencyItem | undefined | void> = new vscode.EventEmitter<DependencyItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<DependencyItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private deps: Resource[] | undefined, public r: ResCommented) {
+	constructor(private deps: Resource[] | undefined, public r: ResCommented, public snap:Snapshot, public diary:string) {
 	}
 
 	refresh(): void {
@@ -35,7 +35,7 @@ export class DepNodeProvider implements vscode.TreeDataProvider<DependencyItem> 
 	 */
 	private getDeps(): DependencyItem[] {
 		const toDep = (dep: Resource, module:string, version:string): DependencyItem => {
-			return new DependencyItem(module, version, dep, vscode.TreeItemCollapsibleState.None);
+			return new DependencyItem(module, version, dep, this.snap, this.diary, vscode.TreeItemCollapsibleState.None);
 		};
 
 		const ds = this.deps? this.deps.map(dep => toDep(dep, dep.moduleOrCommand, dep.versionOrOutput)) : [];
@@ -50,6 +50,8 @@ export class DependencyItem extends vscode.TreeItem {
 		public readonly label: string,
 		private readonly version: string,
 		public dep: Resource,
+		public snap: Snapshot,
+		public diary: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		//public readonly command?: vscode.Command
 	) {

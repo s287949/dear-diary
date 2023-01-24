@@ -3,9 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileItem = exports.FilesNodeProvider = void 0;
 const vscode = require("vscode");
 class FilesNodeProvider {
-    constructor(files, r) {
+    constructor(files, r, snap, diary) {
         this.files = files;
         this.r = r;
+        this.snap = snap;
+        this.diary = diary;
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
     }
@@ -32,13 +34,13 @@ class FilesNodeProvider {
     getFiles(f) {
         const toFile = (file) => {
             if (file.type === "dir" && file.snap) {
-                return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
+                return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, this.snap, this.diary, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
                     command: 'extension.openFile',
                     title: '',
                     arguments: [file]
                 });
             }
-            return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+            return new FileItem({ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, this.snap, this.diary, file.type === "dir" ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
         };
         const fs = f ? f.map(file => toFile(file)) : [];
         return fs;
@@ -46,11 +48,13 @@ class FilesNodeProvider {
 }
 exports.FilesNodeProvider = FilesNodeProvider;
 class FileItem extends vscode.TreeItem {
-    constructor(label, subfiles, file, collapsibleState, command) {
+    constructor(label, subfiles, file, snap, diary, collapsibleState, command) {
         super(label, collapsibleState);
         this.label = label;
         this.subfiles = subfiles;
         this.file = file;
+        this.snap = snap;
+        this.diary = diary;
         this.collapsibleState = collapsibleState;
         this.command = command;
         collapsibleState === vscode.TreeItemCollapsibleState.None ? this.contextValue = 'file' : this.contextValue = 'folder';

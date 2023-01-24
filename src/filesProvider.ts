@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { FSInstance, ResCommented } from './Snapshot';
+import { FSInstance, ResCommented, Snapshot } from './Snapshot';
 
 export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<FileItem | undefined | void> = new vscode.EventEmitter<FileItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<FileItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private files: FSInstance[] | undefined, private r: ResCommented) {
+	constructor(private files: FSInstance[] | undefined, private r: ResCommented, public snap:Snapshot, public diary:string) {
 	}
 
 	refresh(): void {
@@ -36,13 +36,13 @@ export class FilesNodeProvider implements vscode.TreeDataProvider<FileItem> {
 	private getFiles(f: FSInstance[]): FileItem[] {
 		const toFile = (file: FSInstance): FileItem => {
 			if(file.type==="dir" && file.snap){
-				return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
+				return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, this.snap, this.diary, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, {
 					command: 'extension.openFile',
 					title: '',
 					arguments: [file]
 				});
 			}
-			return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+			return new FileItem(<any>{ label: file.name, highlights: file.fileSnapshoted === true ? [[0, file.name.length]] : void 0 }, file.subInstances, file, this.snap, this.diary, file.type==="dir"? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
 		};
 		
 		const fs = f? f.map(file => toFile(file)) : [];
@@ -57,6 +57,8 @@ export class FileItem extends vscode.TreeItem {
 		public readonly label: vscode.TreeItemLabel,
 		public readonly subfiles: FSInstance[],
 		public file: FSInstance,
+		public snap: Snapshot,
+		public diary: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly command?: vscode.Command
 	) {

@@ -4,9 +4,11 @@ exports.DependencyItem = exports.DepNodeProvider = void 0;
 const vscode = require("vscode");
 const path = require("path");
 class DepNodeProvider {
-    constructor(deps, r) {
+    constructor(deps, r, snap, diary) {
         this.deps = deps;
         this.r = r;
+        this.snap = snap;
+        this.diary = diary;
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
     }
@@ -32,7 +34,7 @@ class DepNodeProvider {
      */
     getDeps() {
         const toDep = (dep, module, version) => {
-            return new DependencyItem(module, version, dep, vscode.TreeItemCollapsibleState.None);
+            return new DependencyItem(module, version, dep, this.snap, this.diary, vscode.TreeItemCollapsibleState.None);
         };
         const ds = this.deps ? this.deps.map(dep => toDep(dep, dep.moduleOrCommand, dep.versionOrOutput)) : [];
         return ds;
@@ -40,11 +42,13 @@ class DepNodeProvider {
 }
 exports.DepNodeProvider = DepNodeProvider;
 class DependencyItem extends vscode.TreeItem {
-    constructor(label, version, dep, collapsibleState) {
+    constructor(label, version, dep, snap, diary, collapsibleState) {
         super(label, collapsibleState);
         this.label = label;
         this.version = version;
         this.dep = dep;
+        this.snap = snap;
+        this.diary = diary;
         this.collapsibleState = collapsibleState;
         this.iconPath = {
             light: path.join(__filename, '..', '..', 'resources', 'light', 'dependency.svg'),

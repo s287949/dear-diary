@@ -39,11 +39,11 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.refreshFiles', () => nodeFilesProvider.refresh());
     //Open file showing code/file snapshotted
     vscode.commands.registerCommand('extension.openSnapshot', async (snap, diary) => {
-        nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies, resCommented);
+        nodeDependenciesProvider = new dependenciesProvider_1.DepNodeProvider(snap.dependencies, resCommented, snap, diary.title);
         vscode.window.registerTreeDataProvider('dependencies', nodeDependenciesProvider);
-        nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(snap.scripts, resCommented);
+        nodeScriptsProvider = new scriptsProvider_1.ScriptsProvider(snap.scripts, resCommented, snap, diary.title);
         vscode.window.registerTreeDataProvider('command-line-scripts', nodeScriptsProvider);
-        nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files, resCommented);
+        nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files, resCommented, snap, diary.title);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
         if (diary.type !== "project") {
             var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
@@ -140,13 +140,13 @@ function activate(context) {
             commentProvider.setComment(node.snap, node.diaryTitle, resCommented);
         }
         else if (node instanceof dependenciesProvider_1.DependencyItem) {
-            commentProvider.setDepComment(node.dep);
+            commentProvider.setDepComment(node.dep, node.snap, node.diary);
         }
         else if (node instanceof scriptsProvider_1.ScriptItem) {
-            commentProvider.setScriptComment(node.script);
+            commentProvider.setScriptComment(node.script, node.snap, node.diary);
         }
         else if (node instanceof filesProvider_1.FileItem) {
-            commentProvider.setFileComment(node.file);
+            commentProvider.setFileComment(node.file, node.snap, node.diary);
         }
     });
     //create a new project snapshot using git
@@ -658,25 +658,31 @@ class CommentViewProvider {
             }
         }
     }
-    setDepComment(n) {
+    setDepComment(n, sn, dtit) {
         this.dep = n;
         this.type = "dependency";
+        this.snap = sn;
+        this.dTitle = dtit;
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type } });
+            this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT: dtit } });
         }
     }
-    setScriptComment(n) {
+    setScriptComment(n, sn, dtit) {
         this.script = n;
         this.type = "script";
+        this.snap = sn;
+        this.dTitle = dtit;
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type } });
+            this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT: dtit } });
         }
     }
-    setFileComment(n) {
+    setFileComment(n, sn, dtit) {
         this.fi = n;
         this.type = "file";
+        this.snap = sn;
+        this.dTitle = dtit;
         if (this._view) {
-            this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type } });
+            this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT: dtit } });
         }
     }
     _getHtmlForWebview(webview) {
@@ -717,7 +723,7 @@ class CommentViewProvider {
 				</div>
 
 				<form id="comment-box">
-					<textarea id="text-area" class="ghost"></textarea>
+					<textarea id="input-area" class="ghost"></textarea>
 				</form>
 
 				<div class="buttons-row">				

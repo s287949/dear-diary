@@ -12,10 +12,11 @@
     });
 
     let comment = "";
-    let prComment = "";
+    //let prevCom = "";
     let type = "";
     let openSnap = "";
     let openDiary = "";
+    let c=0;
     //let coms;
 
     // Handle messages sent from the extension to the webview
@@ -26,8 +27,8 @@
                 {
                     document.querySelector('#savebtn').className = "ghost";
                     document.querySelector('#cancelbtn').className = "ghost";
-                    document.querySelector('#text-area').className = "ghost";
                     document.querySelector('#card').className = "card";
+                    document.querySelector('#comment-box').className = "ghost";
 
                     if (message.relatedData.snap) {
                         type = "snapshot";
@@ -47,77 +48,72 @@
                         if (snap.comment !== "") {
                             com.textContent = snap.comment;
                             comment = snap.comment;
-                            prComment = comment;
                         }
                         else {
                             com.textContent = "";
                             comment = "";
-                            prComment = "";
                         }
 
                         prepareLists(coms.dependencies, coms.files, coms.scripts);
                     }
                     else if (message.relatedData.type === "dependency") {
                         type = "dependency";
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + message.relatedData.diaryT + "/" + message.relatedData.snapT;
+
                         var lists = document.querySelector('#lists');
                         lists.className = "ghost";
                         var res = message.relatedData.res; //Resource
-                        const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + openDiary + "/" + openSnap;
                         const sublab = document.querySelector('#sublabel');
                         sublab.textContent = "Dependency: " + res.moduleOrCommand;
                         const com = document.querySelector('.text-box');
                         if (res.comment !== "") {
                             com.textContent = res.comment;
                             comment = res.comment;
-                            prComment = comment;
                         }
                         else {
                             com.textContent = "";
                             comment = "";
-                            prComment = "";
                         }
                     }
                     else if (message.relatedData.type === "script") {
                         type = "script";
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + message.relatedData.diaryT + "/" + message.relatedData.snapT;
+
                         var lists = document.querySelector('#lists');
                         lists.className = "ghost";
                         var res = message.relatedData.res; //Resource
-                        const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + openDiary + "/" + openSnap;
                         const sublab = document.querySelector('#sublabel');
                         sublab.textContent = "Script: " + res.moduleOrCommand;
                         const com = document.querySelector('.text-box');
                         if (res.comment !== "") {
                             com.textContent = res.comment;
                             comment = res.comment;
-                            prComment = comment;
                         }
                         else {
                             com.textContent = "";
                             comment = "";
-                            prComment = "";
                         }
                     }
                     else if (message.relatedData.type === "file") {
                         type = "file";
+                        const lab = document.querySelector('#label');
+                        lab.textContent = "Diary/Snapshot: " + message.relatedData.diaryT + "/" + message.relatedData.snapT;
+
                         var lists = document.querySelector('#lists');
                         lists.className = "ghost";
                         var res = message.relatedData.res; //FSInstance
-                        const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + openDiary + "/" + openSnap;
                         const sublab = document.querySelector('#sublabel');
                         sublab.textContent = "File: " + res.name;
                         const com = document.querySelector('.text-box');
                         if (res.comment !== "") {
                             com.textContent = res.comment;
                             comment = res.comment;
-                            prComment = comment;
                         }
                         else {
                             com.textContent = "";
                             comment = "";
-                            prComment = "";
                         }
                     }
 
@@ -131,15 +127,21 @@
         //card disappears
         const crd = document.querySelector('.card');
         crd.className = "ghost";
-        //prComment = comment;
         var prevCom = comment;
 
         //input text box for editing the comment appears
         const frm = document.querySelector('#comment-box');
-        const input = document.querySelector('#text-area');
-        input.className = "";
+        frm.className = "";
+        //delete previous text area
+        const previnput = document.querySelector('#input-area');
+        frm?.removeChild(previnput);
+        previnput?.remove();
+        //create new text area and append it to form
+        const input = document.createElement('textarea');
+        input.id = "input-area";
         input.rows = 10;
         input.textContent = comment;
+        frm?.appendChild(input);
         input.addEventListener('change', (e) => {
             const value = e.target.value;
             comment = value;

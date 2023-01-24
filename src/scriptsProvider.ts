@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Resource, ResCommented } from './Snapshot';
+import { Resource, ResCommented, Snapshot } from './Snapshot';
 
 export class ScriptsProvider implements vscode.TreeDataProvider<ScriptItem> {
 
 	private _onDidChangeTreeData: vscode.EventEmitter<ScriptItem | undefined | void> = new vscode.EventEmitter<ScriptItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<ScriptItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	constructor(private scripts: Resource[] | undefined, private r: ResCommented) {
+	constructor(private scripts: Resource[] | undefined, private r: ResCommented, public snap:Snapshot, public diary:string) {
 	}
 
 	refresh(): void {
@@ -35,7 +35,7 @@ export class ScriptsProvider implements vscode.TreeDataProvider<ScriptItem> {
 	 */
 	private getScripts(): ScriptItem[] {
 		const toScript = (script:Resource): ScriptItem => {
-			return new ScriptItem(script.moduleOrCommand, script, vscode.TreeItemCollapsibleState.None, {
+			return new ScriptItem(script.moduleOrCommand, script, this.snap, this.diary, vscode.TreeItemCollapsibleState.None, {
 				command: 'extension.openScript',
 				title: '',
 				arguments: [script]
@@ -55,6 +55,8 @@ export class ScriptItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,
 		public script: Resource,
+		public snap: Snapshot,
+		public diary: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly command?: vscode.Command
 	) {
