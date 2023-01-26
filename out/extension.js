@@ -46,9 +46,9 @@ function activate(context) {
         nodeFilesProvider = new filesProvider_1.FilesNodeProvider(snap.files, resCommented, snap, diary.title);
         vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
         if (diary.type !== "project") {
-            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
+            var setting = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot" + snap.extension);
             vscode.workspace.onDidOpenTextDocument((a) => {
-                let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension;
+                let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + snap.extension : "C:\\" + diary.title + "\\" + "code snapshot" + snap.extension;
                 if (a.fileName === fn) {
                     vscode.window.showTextDocument(a, 1, false).then(e => {
                         e.edit(edit => {
@@ -117,10 +117,10 @@ function activate(context) {
     });
     //Close the project snapshot previously opened and go back to the version of the code in act before selecting it
     vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-        /*if(!tc){
+        if (!tc) {
             vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
             return;
-        }*/
+        }
         let command = "";
         let output;
         command = "cd " + rootPath + " && git checkout master";
@@ -213,7 +213,8 @@ function activate(context) {
                                 return;
                             }
                             let fileName = document.fileName;
-                            let ext = vscode.window.activeTextEditor?.document.languageId ? vscode.window.activeTextEditor?.document.languageId : "txt";
+                            let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)[0];
+                            let ext = fileext ? fileext : "txt";
                             if (rootPath) {
                                 fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
                             }
@@ -225,7 +226,7 @@ function activate(context) {
                                 vscode.window.showErrorMessage("Error: No code selected for the snapshot");
                             }
                             else {
-                                //context.globalState.update("snaps", []);
+                                context.globalState.update("snaps", []);
                                 snaps = context.globalState.get("snaps");
                                 if (!snaps) {
                                     context.globalState.update("snaps", []);
@@ -343,7 +344,8 @@ function activate(context) {
                                 return;
                             }
                             let fileName = document.fileName;
-                            let ext = vscode.window.activeTextEditor?.document.languageId ? vscode.window.activeTextEditor?.document.languageId : "txt";
+                            let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)[0];
+                            let ext = fileext ? fileext : "txt";
                             if (rootPath) {
                                 fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
                             }

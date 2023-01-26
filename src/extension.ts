@@ -12,11 +12,9 @@ import { getDepsInPackageJson } from './dependenciesCatcher';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from "child_process";
-import { isNullOrUndefined } from 'util';
 
 
 let terminalData = {};
-
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -51,9 +49,9 @@ export function activate(context: vscode.ExtensionContext) {
 		nodeFilesProvider = new FilesNodeProvider(snap.files!, resCommented, snap, diary.title);
 		vscode.window.registerTreeDataProvider('files', nodeFilesProvider);
 		if (diary.type !== "project") {
-			var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension);
+			var setting: vscode.Uri = vscode.Uri.parse(snap.title ? "untitled:" + "C:\\" + diary.title + "\\" + snap.title + snap.extension : "untitled:" + "C:\\" + diary.title + "\\" + "code snapshot" + snap.extension);
 			vscode.workspace.onDidOpenTextDocument((a) => {
-				let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + "." + snap.extension : "C:\\" + diary.title + "\\" + "code snapshot." + snap.extension;
+				let fn = snap.title ? "C:\\" + diary.title + "\\" + snap.title + snap.extension : "C:\\" + diary.title + "\\" + "code snapshot" + snap.extension;
 				if (a.fileName === fn) {
 					vscode.window.showTextDocument(a, 1, false).then(e => {
 						e.edit(edit => {
@@ -129,10 +127,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//Close the project snapshot previously opened and go back to the version of the code in act before selecting it
 	vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-		/*if(!tc){
+		if(!tc){
 			vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
 			return;
-		}*/
+		}
 		let command: string = "";
 		let output;
 		command = "cd " + rootPath + " && git checkout master";
@@ -233,7 +231,8 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 
 							let fileName = document.fileName;
-							let ext = vscode.window.activeTextEditor?.document.languageId? vscode.window.activeTextEditor?.document.languageId : "txt";
+							let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)![0];
+							let ext = fileext? fileext : "txt";
 
 							if (rootPath) {
 								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
@@ -247,7 +246,7 @@ export function activate(context: vscode.ExtensionContext) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
-								//context.globalState.update("snaps", []);
+								context.globalState.update("snaps", []);
 								snaps = context.globalState.get("snaps");
 								if (!snaps) {
 									context.globalState.update("snaps", []);
@@ -375,7 +374,8 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 
 							let fileName = document.fileName;
-							let ext = vscode.window.activeTextEditor?.document.languageId? vscode.window.activeTextEditor?.document.languageId : "txt";
+							let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)![0];
+							let ext = fileext? fileext : "txt";
 
 							if (rootPath) {
 								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
