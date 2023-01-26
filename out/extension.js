@@ -66,9 +66,9 @@ function activate(context) {
         else {
             let command = "";
             let output;
+            command = "cd " + rootPath + " && git add .";
+            output = await execShell(command);
             if (!tc) {
-                command = "cd " + rootPath + " && git add .";
-                output = await execShell(command);
                 command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
                 output = await execShell(command);
                 tc = true;
@@ -814,7 +814,7 @@ function getNonce() {
 const execShell = (cmd) => new Promise((resolve, reject) => {
     cp.exec(cmd, (err, out) => {
         if (err) {
-            return resolve('error');
+            return resolve(err.toString());
         }
         return resolve(out);
     });

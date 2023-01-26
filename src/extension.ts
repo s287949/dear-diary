@@ -70,9 +70,9 @@ export function activate(context: vscode.ExtensionContext) {
 		else {
 			let command: string = "";
 			let output;
+			command = "cd " + rootPath + " && git add .";
+			output = await execShell(command);
 			if (!tc) {
-				command = "cd " + rootPath + " && git add .";
-				output = await execShell(command);
 				command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
 				output = await execShell(command);
 				tc = true;
@@ -908,7 +908,7 @@ const execShell = (cmd: string) =>
 	new Promise<string>((resolve, reject) => {
 		cp.exec(cmd, (err, out) => {
 			if (err) {
-				return resolve('error');
+				return resolve(err.toString());
 			}
 			return resolve(out);
 		});
