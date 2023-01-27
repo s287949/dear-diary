@@ -246,7 +246,7 @@ export function activate(context: vscode.ExtensionContext) {
 								vscode.window.showErrorMessage("Error: No code selected for the snapshot");
 							}
 							else {
-								context.globalState.update("snaps", []);
+								//context.globalState.update("snaps", []);
 								snaps = context.globalState.get("snaps");
 								if (!snaps) {
 									context.globalState.update("snaps", []);
