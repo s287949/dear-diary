@@ -119,7 +119,7 @@ export class SnapshotItem extends vscode.TreeItem {
 	) {
 		super(title, collapsibleState);
 		this.contextValue="snapshot";
-		if(comment!==""){
+		if(comment!=="" || snap.nComments>0){
 			this.description=(phaseno+1).toString()+" - commented";
 		}
 		else{

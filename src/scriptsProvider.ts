@@ -65,6 +65,13 @@ export class ScriptItem extends vscode.TreeItem {
 		if(script.comment!==""){
 			this.description="commented";
 		}
+
+		var com = {
+			command: 'dear-diary.comment',
+			title: '',
+			arguments: [this]
+		};
+		this.command = com;
 	}
 
 	iconPath = {

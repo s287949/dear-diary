@@ -22,13 +22,18 @@
 		"commands": [
 			{
 				"command": "dear-diary.new-code-snapshot",
-				"title": "New Diary",
+				"title": "New Snapshot",
 				"category": "Dear Diary"
 			},
 			{
 				"command": "dear-diary.refreshSnapshots",
 				"title": "Refresh",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "dear-diary.delete-everything",
+				"title": "Delete",
+				"icon": "$(close)"
 			},
 			{
 				"command": "dear-diary.closeProjectSnapshot",
@@ -51,7 +56,7 @@
 				{
 					"id": "dear-diary",
 					"title": "Dear Diary",
-					"icon": "$(notebook)"
+					"icon": "resources/dark/diary.svg"
 				}
 			],
 			"panel": [
@@ -67,12 +72,12 @@
 				{
 					"type": "webview",
 					"id": "new-snapshots",
-					"name": "New Diary",
+					"name": "New Snapshot",
 					"contextualTitle": "New Diary"
 				},
 				{
 					"id": "snapshots",
-					"name": "Diaries"
+					"name": "Snapshots"
 				},
 				{
 					"id": "files",
@@ -99,6 +104,11 @@
 			"view/title": [
 				{
 					"command": "dear-diary.refreshSnapshots",
+					"when": "view == snapshots",
+					"group": "navigation"
+				},
+				{
+					"command": "dear-diary.delete-everything",
 					"when": "view == snapshots",
 					"group": "navigation"
 				}

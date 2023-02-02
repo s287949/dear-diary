@@ -6,12 +6,12 @@
 (function () {
     const vscode = acquireVsCodeApi();
     
-    document.querySelector('.new-code-snapshot-button').addEventListener('click', () => {
+    /*document.querySelector('.new-code-snapshot-button').addEventListener('click', () => {
         vscode.postMessage({ type: 'new-code-snap' });
     });
     document.querySelector('.new-file-snapshot-button').addEventListener('click', () => {
         vscode.postMessage({ type: 'new-file-snap' });
-    });
+    });*/
     document.querySelector('.new-project-snapshot-button').addEventListener('click', () => {
         vscode.postMessage({ type: 'new-project-snap' });
     });

@@ -105,7 +105,7 @@ class SnapshotItem extends vscode.TreeItem {
             dark: path.join(__filename, '..', '..', 'resources', 'dark', 'layers.svg')
         };
         this.contextValue = "snapshot";
-        if (comment !== "") {
+        if (comment !== "" || snap.nComments > 0) {
             this.description = (phaseno + 1).toString() + " - commented";
         }
         else {

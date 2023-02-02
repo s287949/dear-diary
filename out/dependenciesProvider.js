@@ -62,6 +62,12 @@ class DependencyItem extends vscode.TreeItem {
         else {
             this.description = this.version;
         }
+        var com = {
+            command: 'dear-diary.comment',
+            title: '',
+            arguments: [this]
+        };
+        this.command = com;
     }
 }
 exports.DependencyItem = DependencyItem;

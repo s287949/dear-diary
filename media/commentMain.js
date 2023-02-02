@@ -172,7 +172,7 @@
             const sList = document.querySelector('#scripts-list');
             sList.className = "";
             const slabel = document.querySelector('#scripts-label');
-            slabel.className = "";
+            slabel.className = "subtitle-padding";
             const del = document.querySelector('#del1');
             sList?.removeChild(del);
             del?.remove();
@@ -183,10 +183,14 @@
             scripts.forEach(function (scr, index) {
                 let scom = scr.comment;
                 const li = document.createElement('li');
+                const comCard = document.createElement('div');
+                comCard.className = "comment-card";
 
                 const title = document.createElement('h3');
                 title.textContent = scr.moduleOrCommand;
-                li.appendChild(title);
+                comCard.appendChild(title);
+                li.appendChild(comCard);
+                li.className = "comment-padding";
 
                 //create and prepare card with comment
                 const scriptCard = document.createElement('div');
@@ -200,7 +204,7 @@
                 scriptTextBox.textContent = scr.comment;
 
                 //create and prepare comment-box and cancel/save/edit buttons
-                const scriptForm = document.createElement('form');
+                /*const scriptForm = document.createElement('form');
                 const scriptButtons = document.createElement('div');
                 scriptButtons.className = 'buttons-row';
                 const scriptCancelBtn = document.createElement('button');
@@ -246,12 +250,12 @@
 
                 scriptButtons.appendChild(scriptCancelBtn);
                 scriptButtons.appendChild(scriptEditBtn);
-                scriptButtons.appendChild(scriptSaveBtn);
+                scriptButtons.appendChild(scriptSaveBtn);*/
 
                 //add everything to li
-                li.appendChild(scriptCard);
-                li.appendChild(scriptForm);
-                li.appendChild(scriptButtons);
+                comCard.appendChild(scriptCard);
+                //li.appendChild(scriptForm);
+                //li.appendChild(scriptButtons);
 
                 newdel?.appendChild(li);
             });
@@ -273,7 +277,7 @@
             const fList = document.querySelector('#files-list');
             fList.className = "";
             const flabel = document.querySelector('#files-label');
-            flabel.className = "";
+            flabel.className = "subtitle-padding";
             const del = document.querySelector('#del2');
             fList?.removeChild(del);
             del?.remove();
@@ -284,10 +288,14 @@
             files.forEach(function (fl, index) {
                 let fcom = fl.comment;
                 const li = document.createElement('li');
+                const comCard = document.createElement('div');
+                comCard.className = "comment-card";
 
                 const title = document.createElement('h3');
                 title.textContent = fl.name;
-                li.appendChild(title);
+                comCard.appendChild(title);
+                li.appendChild(comCard);
+                li.className = "comment-padding";
 
                 //create and prepare card with comment
                 const fileCard = document.createElement('div');
@@ -301,7 +309,7 @@
                 fileTextBox.textContent = fl.comment;
 
                 //create and prepare comment-box and cancel/save/edit buttons
-                const fileForm = document.createElement('form');
+                /*const fileForm = document.createElement('form');
                 const fileButtons = document.createElement('div');
                 fileButtons.className = 'buttons-row';
                 const fileCancelBtn = document.createElement('button');
@@ -347,12 +355,12 @@
 
                 fileButtons.appendChild(fileCancelBtn);
                 fileButtons.appendChild(fileEditBtn);
-                fileButtons.appendChild(fileSaveBtn);
+                fileButtons.appendChild(fileSaveBtn);*/
 
                 //add everything to li
-                li.appendChild(fileCard);
-                li.appendChild(fileForm);
-                li.appendChild(fileButtons);
+                comCard.appendChild(fileCard);
+                //li.appendChild(fileForm);
+                //li.appendChild(fileButtons);
 
                 newdel?.appendChild(li);
             });
@@ -374,7 +382,7 @@
             const dList = document.querySelector('#dependencies-list');
             dList.className = "";
             const dlabel = document.querySelector('#dependencies-label');
-            dlabel.className = "";
+            dlabel.className = "subtitle-padding";
             const del = document.querySelector('#del3');
             dList?.removeChild(del);
             del?.remove();
@@ -385,10 +393,14 @@
             dependencies.forEach(function (de, index) {
                 let dcom = de.comment;
                 const li = document.createElement('li');
+                const comCard = document.createElement('div');
+                comCard.className = "comment-card";
 
                 const title = document.createElement('h3');
                 title.textContent = de.moduleOrCommand;
-                li.appendChild(title);
+                comCard.appendChild(title);
+                li.appendChild(comCard);
+                li.className = "comment-padding";
 
                 //create and prepare card with comment
                 const dependencyCard = document.createElement('div');
@@ -402,7 +414,7 @@
                 dependencyTextBox.textContent = de.comment;
 
                 //create and prepare comment-box and cancel/save/edit buttons
-                const dependencyForm = document.createElement('form');
+                /*const dependencyForm = document.createElement('form');
                 const dependencyButtons = document.createElement('div');
                 dependencyButtons.className = 'buttons-row';
                 const dependencyCancelBtn = document.createElement('button');
@@ -448,12 +460,12 @@
 
                 dependencyButtons.appendChild(dependencyCancelBtn);
                 dependencyButtons.appendChild(dependencyEditBtn);
-                dependencyButtons.appendChild(dependencySaveBtn);
+                dependencyButtons.appendChild(dependencySaveBtn);*/
 
                 //add everything to li
-                li.appendChild(dependencyCard);
-                li.appendChild(dependencyForm);
-                li.appendChild(dependencyButtons);
+                comCard.appendChild(dependencyCard);
+                //li.appendChild(dependencyForm);
+                //li.appendChild(dependencyButtons);
 
                 newdel?.appendChild(li);
             });

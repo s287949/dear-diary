@@ -58,6 +58,15 @@ class FileItem extends vscode.TreeItem {
         this.collapsibleState = collapsibleState;
         this.command = command;
         collapsibleState === vscode.TreeItemCollapsibleState.None ? this.contextValue = 'file' : this.contextValue = 'folder';
+        var com;
+        if (this.contextValue === 'file') {
+            com = {
+                command: 'dear-diary.comment',
+                title: '',
+                arguments: [this]
+            };
+            this.command = com;
+        }
         if (file.comment !== "") {
             this.description = "commented";
         }
