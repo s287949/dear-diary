@@ -17,15 +17,22 @@
     });
 
     // Handle messages sent from the extension to the webview
-    /*window.addEventListener('message', event => {
+    window.addEventListener('message', event => {
         const message = event.data; // The json data that the extension sent
         switch (message.type) {
-            case 'newSnapshot':
+            case 'entry':
                 {
+                    const en = document.querySelector('#entry');
+                    if(message.e === false){
+                        en.className = "ghost";
+                    }
+                    else {
+                        en.className = "";
+                    }
                     break;
                 }
         }
-    });*/
+    });
 }());
 
 

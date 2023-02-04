@@ -24,12 +24,22 @@ function activate(context) {
     let snaps = context.globalState.get("snaps");
     let resCommented = new Snapshot_1.ResCommented([], [], []);
     let diary = context.globalState.get("diary") ? context.globalState.get("diary") : new Snapshot_1.Diary("Diary", [], "project");
+    //New code snapshot command impelementation
+    const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
     //create only one single diary with all the project snapshots
     if (diary === undefined) {
         context.globalState.update("diary", new Snapshot_1.Diary("Diary", [], "project"));
+        ft = true;
+        snapProvider.change(ft);
     }
     else if (diary.snapshots.length > 0) {
         ft = false;
+        snapProvider.change(ft);
+    }
+    else {
+        ft = true;
+        snapProvider.change(ft);
     }
     //Show dependencies in the Dependencies view
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
@@ -80,13 +90,16 @@ function activate(context) {
             let output;
             command = "cd " + rootPath + " && git add .";
             output = await execShell(command);
+            //vscode.window.showInformationMessage(output);
             if (!tc) {
                 command = "cd " + rootPath + " && git commit -m \"temporary commit\"";
                 output = await execShell(command);
+                //vscode.window.showInformationMessage(output);
                 tc = true;
             }
             command = "cd " + rootPath + " && git checkout " + snap.code;
             output = await execShell(command);
+            //vscode.window.showInformationMessage(output);
             if (output === "error") {
                 vscode.window.showErrorMessage("Error: Could not open snapshot");
             }
@@ -130,13 +143,14 @@ function activate(context) {
     //Close the project snapshot previously opened and go back to the version of the code in act before selecting it
     vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
         if (!tc) {
-            vscode.window.showErrorMessage("Error: No Project snapshot was previosuly opened");
+            vscode.window.showErrorMessage("Error: No snapshot to close");
             return;
         }
         let command = "";
         let output;
         command = "cd " + rootPath + " && git checkout master";
         output = await execShell(command);
+        //vscode.window.showInformationMessage(output);
         /*if (output === "error") {
             vscode.window.showErrorMessage("Error: Could not close snapshot and go back");
         }
@@ -164,6 +178,8 @@ function activate(context) {
     vscode.commands.registerCommand('dear-diary.delete-everything', async () => {
         diary.snapshots.length = 0;
         context.globalState.update("diary", diary);
+        ft = true;
+        snapProvider.change(ft);
         vscode.commands.executeCommand("dear-diary.refreshSnapshots");
     });
     //create a new project snapshot using git
@@ -198,14 +214,11 @@ function activate(context) {
         output = await execShell(command);
         command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
         output = await execShell(command);
-        vscode.window.showInformationMessage(output);
+        //vscode.window.showInformationMessage(output);
         if (output !== "error") {
             ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
         }
     });
-    //New code snapshot command impelementation
-    const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
     //create a new code/file/project diary and the relative first snapshot
     context.subscriptions.push(vscode.commands.registerCommand('dear-diary.new-code-snapshot', async (type) => {
         await vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
@@ -465,8 +478,9 @@ function activate(context) {
                             else {
                                 //get dependencies
                                 let deps = [];
+                                let pa = packagePath[0].replace(/\\package\.json/, '');
                                 if (packagePath.length > 0) {
-                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(packagePath[0].replace(/\/package\.json/, ''));
+                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(pa);
                                 }
                                 else {
                                     deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
@@ -525,6 +539,8 @@ function activate(context) {
                                     diary?.snapshots.push(ns);
                                 }
                                 //update snapshot array of relative diary and updating system diary array
+                                ft = false;
+                                snapProvider.change(ft);
                                 context.globalState.update("diary", diary);
                                 vscode.commands.executeCommand("dear-diary.refreshSnapshots");
                                 ft = false;
@@ -640,6 +656,11 @@ class NewSnapshotsViewProvider {
             }
         });
     }
+    change(t) {
+        if (this._view) {
+            this._view.webview.postMessage({ type: 'entry', e: t });
+        }
+    }
     _getHtmlForWebview(webview) {
         // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js'));
@@ -649,7 +670,6 @@ class NewSnapshotsViewProvider {
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
-        const par = ft ? `</br>You still don't have snapshots.</br></br>To get familiar with the extension, you can start by taking the first snapshot of your project.</br></br>` : `</br>`;
         return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -673,9 +693,10 @@ class NewSnapshotsViewProvider {
 
 				<h3>Welcome to Dear Diary!</h3>
 				<hr>
-				<div>
+				<p></br></p>
+				<div id="entry" class="ghost" >
 					<p class="prova">
-					` + par + `
+						You still don't have snapshots.</br></br>To get familiar with the extension, you can start by taking the first snapshot of your project.</br></br>
 					</p>
 				</div>
 				<button class="new-project-snapshot-button">New Snapshot</button>
