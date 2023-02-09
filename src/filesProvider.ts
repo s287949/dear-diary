@@ -76,7 +76,7 @@ export class FileItem extends vscode.TreeItem {
 			this.command = com;
 		}
 
-		if(file.comment!==""){
+		if(file.comment.length>0){
 			this.description="commented";
 		}
 	}

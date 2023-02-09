@@ -23,19 +23,19 @@ let ft = true;
 export function activate(context: vscode.ExtensionContext) {
 	let snaps: Array<Diary> | undefined = context.globalState.get("snaps");
 	let resCommented = new ResCommented([], [], []);
-	let diary: Diary = context.globalState.get("diary")? context.globalState.get("diary")!: new Diary("Diary", [], "project");
+	let diary: Diary = context.globalState.get("diary") ? context.globalState.get("diary")! : new Diary("Diary", [], "project");
 
 	//New code snapshot command impelementation
 	const snapProvider = new NewSnapshotsViewProvider(context.extensionUri);
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(NewSnapshotsViewProvider.viewType, snapProvider));
 
 	//create only one single diary with all the project snapshots
-	if(diary === undefined){
+	if (diary === undefined) {
 		context.globalState.update("diary", new Diary("Diary", [], "project"));
 		ft = true;
 		snapProvider.change(ft);
 	}
-	else if(diary.snapshots.length>0){
+	else if (diary.snapshots.length > 0) {
 		ft = false;
 		snapProvider.change(ft);
 	}
@@ -138,25 +138,24 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//Save changes to a comment
 	vscode.commands.registerCommand('extension.saveChanges', (type: string) => {
-		context.globalState.update("snaps", snaps);
-		
-		if(type === "snapshot"){
-			vscode.commands.executeCommand("dear-diary.refreshSnapshots");
-		}
-		else if(type === "dependency"){
+		//context.globalState.update("snaps", snaps);
+		context.globalState.update("diary", diary);
+
+		vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+		if (type === "dependency") {
 			vscode.commands.executeCommand("dear-diary.refreshDependencies");
 		}
-		else if(type === "script"){
+		else if (type === "script") {
 			vscode.commands.executeCommand("dear-diary.refreshScripts");
 		}
-		else if(type === "file"){
+		else if (type === "file") {
 			vscode.commands.executeCommand("dear-diary.refreshFiles");
 		}
 	});
 
 	//Close the project snapshot previously opened and go back to the version of the code in act before selecting it
 	vscode.commands.registerCommand('dear-diary.closeProjectSnapshot', async () => {
-		if(!tc){
+		if (!tc) {
 			vscode.window.showErrorMessage("Error: No snapshot to close");
 			return;
 		}
@@ -177,13 +176,13 @@ export function activate(context: vscode.ExtensionContext) {
 	//Comment webview implementation
 	vscode.commands.registerCommand('dear-diary.comment', async (node: SnapshotItem | DependencyItem | ScriptItem | FileItem) => {
 		await vscode.commands.executeCommand('comment.focus');
-		if(node instanceof DependencyItem){
+		if (node instanceof DependencyItem) {
 			commentProvider.setDepComment(node.dep, node.snap, node.diary);
 		}
-		else if(node instanceof ScriptItem){
+		else if (node instanceof ScriptItem) {
 			commentProvider.setScriptComment(node.script, node.snap, node.diary);
 		}
-		else if(node instanceof FileItem){
+		else if (node instanceof FileItem) {
 			commentProvider.setFileComment(node.file, node.snap, node.diary);
 		}
 		else {
@@ -247,7 +246,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
 						const qis = await newCodeSnapshot(context);
 						let fileTree = [];
-						let packagePath : Array<string> = [];
+						let packagePath: Array<string> = [];
 
 						const editor = vscode.window.activeTextEditor;
 						let code;
@@ -267,7 +266,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 							let fileName = document.fileName;
 							let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)![0];
-							let ext = fileext? fileext : "txt";
+							let ext = fileext ? fileext : "txt";
 
 							if (rootPath) {
 								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
@@ -290,13 +289,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 								//get dependencies
 								let deps: Resource[] = [];
-								if(packagePath.length>0){
+								if (packagePath.length > 0) {
 									deps = getDepsInPackageJson(packagePath[0].replace(/\\package\.json/, ''));
 								}
 								else {
 									deps = getDepsInPackageJson(rootPath);
 								}
-								
+
 
 								//get command line scripts
 								let scripts: Resource[] = [];
@@ -410,7 +409,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 							let fileName = document.fileName;
 							let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)![0];
-							let ext = fileext? fileext : "txt";
+							let ext = fileext ? fileext : "txt";
 
 							if (rootPath) {
 								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
@@ -426,7 +425,7 @@ export function activate(context: vscode.ExtensionContext) {
 							else {
 								//get dependencies
 								let deps: Resource[] = [];
-								if(packagePath.length>0){
+								if (packagePath.length > 0) {
 									deps = getDepsInPackageJson(packagePath[0].replace(/\\package\.json/, ''));
 								}
 								else {
@@ -508,7 +507,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 							let fileName = document.fileName;
 							let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)![0];
-							let ext = fileext? fileext : "txt";
+							let ext = fileext ? fileext : "txt";
 
 							if (rootPath) {
 								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
@@ -525,7 +524,7 @@ export function activate(context: vscode.ExtensionContext) {
 								//get dependencies
 								let deps: Resource[] = [];
 								let pa = packagePath[0].replace(/\\package\.json/, '');
-								if(packagePath.length>0){
+								if (packagePath.length > 0) {
 									deps = getDepsInPackageJson(pa);
 								}
 								else {
@@ -647,10 +646,10 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 		const isDirectory = fs.statSync(fullPath).isDirectory();
 		const isLastDirInTree = isDirectory && lastItem;
 
-		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", [], "");
+		let fsInst = new FSInstance(elText, isDirectory ? "dir" : "file", false, "", [], []);
 
 		if (isDirectory) {
-			if(fullPath.replace(/^.*[\\\/]/, '') === "node_modules" || fullPath.replace(/^.*[\\\/]/, '').match(new RegExp(/\..*/))){
+			if (fullPath.replace(/^.*[\\\/]/, '') === "node_modules" || fullPath.replace(/^.*[\\\/]/, '').match(new RegExp(/\..*/))) {
 				return;
 			}
 			if (originalFilePath.includes(fullPath) && type !== 3) {
@@ -661,7 +660,7 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 			}
 		}
 		else {
-			if(fullPath.replace(/^.*[\\\/]/, '') === "package.json"){
+			if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
 				packagePath.push(fullPath);
 			}
 			if (fullPath === originalFilePath && type !== 3) {
@@ -733,7 +732,7 @@ class NewSnapshotsViewProvider implements vscode.WebviewViewProvider {
 		});
 	}
 
-	public change(t: boolean){
+	public change(t: boolean) {
 		if (this._view) {
 			this._view.webview.postMessage({ type: 'entry', e: t });
 		}
@@ -797,7 +796,7 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 	private snap: Snapshot = new Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "", 0);
 	private dep: Resource = new Resource("", "", "", "");
 	private script: Resource = new Resource("", "", "", "");
-	private fi: FSInstance = new FSInstance("", "", false, "", [], "");
+	private fi: FSInstance = new FSInstance("", "", false, "", [], []);
 	private type = "";
 	private dTitle = "";
 	private otherComs: ResCommented = new ResCommented([], [], []);
@@ -828,50 +827,67 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 			switch (data.type) {
 				case 'saveComment':
 					{
-						if(this.type === "snapshot"){
-							if(this.snap.comment==="" && data.value!==""){
+						if (this.type === "snapshot") {
+							if (this.snap.comment === "" && data.value !== "") {
 								this.snap.nComments++;
 							}
-							else if(this.snap.comment !== "" && data.value===""){
+							else if (this.snap.comment !== "" && data.value === "") {
 								this.snap.nComments--;
 							}
 							this.snap.comment = data.value;
 							vscode.commands.executeCommand("extension.saveChanges", this.type);
 						}
-						else if (this.type === "dependency"){
-							if(this.dep.comment==="" && data.value!==""){
+						else if (this.type === "dependency") {
+							if (this.dep.comment === "" && data.value !== "") {
 								this.snap.nComments++;
 							}
-							else if(this.dep.comment !== "" && data.value===""){
+							else if (this.dep.comment !== "" && data.value === "") {
 								this.snap.nComments--;
 							}
 							this.dep.comment = data.value;
 							vscode.commands.executeCommand("extension.saveChanges", this.type);
 						}
-						else if (this.type === "script"){
-							if(this.script.comment ==="" && data.value!==""){
+						else if (this.type === "script") {
+							if (this.script.comment === "" && data.value !== "") {
 								this.snap.nComments++;
 							}
-							else if(this.script.comment !== "" && data.value===""){
+							else if (this.script.comment !== "" && data.value === "") {
 								this.snap.nComments--;
 							}
 							this.script.comment = data.value;
 							vscode.commands.executeCommand("extension.saveChanges", this.type);
 						}
-						else if (this.type === "file"){
-							if(this.fi.comment ==="" && data.value!==""){
+						else if (this.type === "file") {
+							let ind = data.index;
+							if (this.fi.comment[ind] === "" && data.value !== "") {
 								this.snap.nComments++;
 							}
-							else if(this.fi.comment !== "" && data.value===""){
+							else if (this.fi.comment[ind] !== "" && data.value === "") {
 								this.snap.nComments--;
 							}
-							this.fi.comment = data.value;
+
+							if(data.value === ""){
+								this.fi.comment.splice(ind, 1);
+							}
+							else {
+								this.fi.comment[ind] = data.value;
+							}
+							
 							vscode.commands.executeCommand("extension.saveChanges", this.type);
+							this.setFileComment(this.fi, this.snap, "Diary");
 						}
-						console.log(this.dTitle+"/"+this.snap.title+": "+this.snap.nComments);
 						break;
 					};
-				case 'saveOtherComment':
+				case 'saveNewComment':
+					{
+						this.snap.nComments++;
+						this.fi.comment.push(data.com);
+
+						vscode.commands.executeCommand("extension.saveChanges", this.type);
+						this.setFileComment(this.fi, this.snap, "Diary");
+
+					};
+				/*case 'saveOtherComment':
 					{
 						let val = data.val;
 						if(val.type === 'script'){
@@ -920,28 +936,28 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 						}
 						console.log(this.dTitle+"/"+this.snap.title+": "+this.snap.nComments);
 						break;
-					};
+					};*/
 			}
 		});
 	}
 
 	public setComment(s: Snapshot, d: string, ss: ResCommented) {
 		this.snap = s;
-		this.type="snapshot";
+		this.type = "snapshot";
 		this.otherComs = ss;
 		this.dTitle = d;
 
-		ss.dependencies.splice(0,ss.dependencies.length);
-		ss.scripts.splice(0,ss.scripts.length);
-		ss.files.splice(0,ss.files.length);
+		ss.dependencies.splice(0, ss.dependencies.length);
+		ss.scripts.splice(0, ss.scripts.length);
+		ss.files.splice(0, ss.files.length);
 
-		for(const deps of s.dependencies){
-			if(deps.comment!==""){
+		for (const deps of s.dependencies) {
+			if (deps.comment !== "") {
 				ss.dependencies.push(deps);
 			}
 		}
-		for(const scrs of s.scripts){
-			if(scrs.comment!== ""){
+		for (const scrs of s.scripts) {
+			if (scrs.comment !== "") {
 				ss.scripts.push(scrs);
 			}
 		}
@@ -952,47 +968,47 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
-	public searchFiles(f: FSInstance[], s2:ResCommented){
-		for(const f2 of f){
-			if(f2.type==="folder"){
+	public searchFiles(f: FSInstance[], s2: ResCommented) {
+		for (const f2 of f) {
+			if (f2.type === "folder") {
 				this.searchFiles(f2.subInstances, s2);
 			}
-			else if(f2.comment!==""){
+			else if (f2.comment.length > 0) {
 				s2.files.push(f2);
 			}
 		}
 	}
 
-	public setDepComment(n: Resource, sn:Snapshot, dtit:string) {
+	public setDepComment(n: Resource, sn: Snapshot, dtit: string) {
 		this.dep = n;
-		this.type="dependency";
+		this.type = "dependency";
 		this.snap = sn;
 		this.dTitle = dtit;
 
 		if (this._view) {
-			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT:dtit  } });
+			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT: dtit } });
 		}
 	}
 
-	public setScriptComment(n: Resource, sn:Snapshot, dtit:string) {
+	public setScriptComment(n: Resource, sn: Snapshot, dtit: string) {
 		this.script = n;
-		this.type="script";
+		this.type = "script";
 		this.snap = sn;
 		this.dTitle = dtit;
 
 		if (this._view) {
-			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT:dtit } });
+			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT: dtit } });
 		}
 	}
 
-	public setFileComment(n: FSInstance, sn:Snapshot, dtit:string) {
+	public setFileComment(n: FSInstance, sn: Snapshot, dtit: string) {
 		this.fi = n;
-		this.type="file";
+		this.type = "file";
 		this.snap = sn;
 		this.dTitle = dtit;
 
 		if (this._view) {
-			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT:dtit } });
+			this._view.webview.postMessage({ type: 'comment', relatedData: { res: n, type: this.type, snapT: sn.title, diaryT: dtit } });
 		}
 	}
 
@@ -1040,10 +1056,16 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 					<textarea id="input-area" class="ghost"></textarea>
 				</form>
 
-				<div class="buttons-row">				
+				<div id="bRow" class="buttons-row">
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="ghost">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
+				</div>
+
+				<div id="file-comments">
+					<ul id="file-com-list">
+						<div id="delfile"></div>
+					</ul>
 				</div>
 
 				<div id="lists">

@@ -12,12 +12,7 @@
     });
 
     let comment = "";
-    //let prevCom = "";
     let type = "";
-    let openSnap = "";
-    let openDiary = "";
-    let c=0;
-    //let coms;
 
     // Handle messages sent from the extension to the webview
     window.addEventListener('message', event => {
@@ -29,6 +24,8 @@
                     document.querySelector('#cancelbtn').className = "ghost";
                     document.querySelector('#card').className = "card";
                     document.querySelector('#comment-box').className = "ghost";
+                    document.querySelector('#file-comments').className = "ghost";
+                    document.querySelector('#bRow').className = "buttons-row";
 
                     if (message.relatedData.snap) {
                         type = "snapshot";
@@ -39,9 +36,9 @@
                         var coms = message.relatedData.coms;
                         vscode.setState({ scripts: coms.scripts, files: coms.files, dependencies: coms.dependencies });
                         const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + dTitle + "/" + snap.title;
+                        lab.textContent = "Snapshot: " + snap.title;
                         const sublab = document.querySelector('#sublabel');
-                        sublab.textContent= "";
+                        sublab.textContent = "";
                         var lists = document.querySelector('#lists');
                         lists.className = "";
                         const com = document.querySelector('.text-box');
@@ -55,11 +52,12 @@
                         }
 
                         prepareLists(coms.dependencies, coms.files, coms.scripts);
+                        document.querySelector('#editbtn').className = "edit-comment-button";
                     }
                     else if (message.relatedData.type === "dependency") {
                         type = "dependency";
                         const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + message.relatedData.diaryT + "/" + message.relatedData.snapT;
+                        lab.textContent = "Snapshot: " + message.relatedData.snapT;
 
                         var lists = document.querySelector('#lists');
                         lists.className = "ghost";
@@ -75,11 +73,12 @@
                             com.textContent = "";
                             comment = "";
                         }
+                        document.querySelector('#editbtn').className = "edit-comment-button";
                     }
                     else if (message.relatedData.type === "script") {
                         type = "script";
                         const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + message.relatedData.diaryT + "/" + message.relatedData.snapT;
+                        lab.textContent = "Snapshot: " + message.relatedData.snapT;
 
                         var lists = document.querySelector('#lists');
                         lists.className = "ghost";
@@ -95,18 +94,148 @@
                             com.textContent = "";
                             comment = "";
                         }
+                        document.querySelector('#editbtn').className = "edit-comment-button";
                     }
                     else if (message.relatedData.type === "file") {
                         type = "file";
                         const lab = document.querySelector('#label');
-                        lab.textContent = "Diary/Snapshot: " + message.relatedData.diaryT + "/" + message.relatedData.snapT;
+                        lab.textContent = "Snapshot: " + message.relatedData.snapT;
 
                         var lists = document.querySelector('#lists');
                         lists.className = "ghost";
                         var res = message.relatedData.res; //FSInstance
                         const sublab = document.querySelector('#sublabel');
                         sublab.textContent = "File: " + res.name;
-                        const com = document.querySelector('.text-box');
+
+                        let ca = document.querySelector("#card");
+                        ca.className = "ghost";
+                        let br = document.querySelector("#bRow");
+                        br.className = "ghost";
+
+                        document.querySelector('#file-comments').className = "";
+                        const coml = document.querySelector('#file-com-list');
+                        coml.className = "";
+                        const del = document.querySelector('#delfile');
+                        coml?.removeChild(del);
+                        del?.remove();
+                        const newdel = document.createElement('div');
+                        newdel.id = "delfile";
+                        coml?.appendChild(newdel);
+
+                        //list previous added comments
+                        if (res.comment.length > 0) {
+                            res.comment.forEach(function (co, ind) {
+                                let edCom = co;
+                                const li = document.createElement('li');
+                                const comDiv = document.createElement('div');
+                                comDiv.className = "comment-card";
+
+                                li.appendChild(comDiv);
+                                li.className = "comment-padding";
+
+                                //create and prepare card with comment
+                                const comCard = document.createElement('div');
+                                comCard.className = 'card';
+                                const comContainer = document.createElement('div');
+                                comContainer.className = 'container';
+                                const comTextBox = document.createElement('pre');
+                                comTextBox.className = 'text-box';
+                                comContainer.appendChild(comTextBox);
+                                comCard.appendChild(comContainer);
+                                comTextBox.textContent = co;
+
+                                const comForm = document.createElement('form');
+                                const comButtons = document.createElement('div');
+                                comButtons.className = 'buttons-row';
+                                const comCancelBtn = document.createElement('button');
+                                comCancelBtn.textContent = "Cancel";
+                                comCancelBtn.className = "ghost";
+                                const comEditBtn = document.createElement('button');
+                                comEditBtn.textContent = "Edit";
+                                comEditBtn.className = "edit-comment-button";
+                                const comSaveBtn = document.createElement('button');
+                                comSaveBtn.textContent = "Save";
+                                comSaveBtn.className = "ghost";
+
+                                comEditBtn.addEventListener('click', () => {
+                                    //card disappears
+                                    comCard.className = "ghost";
+                                    var prevScrCom = edCom;
+
+                                    //input text box for editing the comment appears
+                                    const input = document.createElement('textarea');
+                                    input.rows = 10;
+                                    input.textContent = co;
+                                    comForm?.appendChild(input);
+                                    input.addEventListener('change', (e) => {
+                                        const value = e.target.value;
+                                        edCom = value;
+                                    });
+
+                                    //edit button disappears and save and cancel buttons appear
+                                    comCancelBtn.className = "cancel-button";
+                                    comEditBtn.className = "ghost";
+                                    comSaveBtn.className = "edit-comment-button";
+
+                                    comCancelBtn.addEventListener('click', () => {
+                                        edCom = prevScrCom;
+                                        cancelComment(comEditBtn, comCancelBtn, comSaveBtn, comCard, input);
+                                    });
+
+                                    comSaveBtn.addEventListener('click', () => {
+                                        prevScrCom = edCom;
+                                        saveOtherComment(comEditBtn, comCancelBtn, comSaveBtn, comTextBox, comCard, input, "file", edCom, ind, li);
+                                    });
+                                });
+
+                                comButtons.appendChild(comCancelBtn);
+                                comButtons.appendChild(comEditBtn);
+                                comButtons.appendChild(comSaveBtn);
+
+                                //add everything to comDiv appended to li
+                                comDiv.appendChild(comCard);
+                                comDiv.appendChild(comForm);
+                                comDiv.appendChild(comButtons);
+
+                                newdel?.appendChild(li);
+
+                            });
+                        }
+
+
+                        //new comment section
+                        let nCom = "";
+                        const newComDiv = document.createElement('div');
+
+                        const newComForm = document.createElement('form');
+                        const newInput = document.createElement('textarea');
+                        newInput.rows = 10;
+                        newInput.textContent = "";
+                        newComForm.appendChild(newInput);
+                        newInput.addEventListener('change', (e) => {
+                            const value = e.target.value;
+                            nCom = value;
+                        });
+
+                        const newComButtons = document.createElement('div');
+                        newComButtons.className = 'buttons-row';
+                        const newComSaveBtn = document.createElement('button');
+                        newComSaveBtn.textContent = "Save";
+                        newComSaveBtn.className = "edit-comment-button";
+                        newComButtons.appendChild(newComSaveBtn);
+
+                        newComSaveBtn.addEventListener('click', () => {
+                            if (nCom !== "") {
+                                vscode.postMessage({ type: 'saveNewComment', com: nCom });
+                            }
+                        });
+
+                        newComDiv.appendChild(newComForm);
+                        newComDiv.appendChild(newComButtons);
+
+                        newdel?.appendChild(newComDiv);
+                        /////////
+                        /*const com = document.querySelector('.text-box');
                         if (res.comment !== "") {
                             com.textContent = res.comment;
                             comment = res.comment;
@@ -114,10 +243,8 @@
                         else {
                             com.textContent = "";
                             comment = "";
-                        }
+                        }*/
                     }
-
-                    document.querySelector('#editbtn').className = "edit-comment-button";
                     break;
                 }
         }
@@ -297,16 +424,22 @@
                 li.appendChild(comCard);
                 li.className = "comment-padding";
 
-                //create and prepare card with comment
-                const fileCard = document.createElement('div');
-                fileCard.className = 'card';
-                const fileContainer = document.createElement('div');
-                fileContainer.className = 'container';
-                const fileTextBox = document.createElement('pre');
-                fileTextBox.className = 'text-box';
-                fileContainer.appendChild(fileTextBox);
-                fileCard.appendChild(fileContainer);
-                fileTextBox.textContent = fl.comment;
+                fl.comment.forEach(function (c, i) {
+                    //create and prepare card with comment
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'card';
+                    const fileContainer = document.createElement('div');
+                    fileContainer.className = 'container';
+                    const fileTextBox = document.createElement('pre');
+                    fileTextBox.className = 'text-box';
+                    fileContainer.appendChild(fileTextBox);
+                    fileCard.appendChild(fileContainer);
+                    fileTextBox.textContent = c;
+
+                    comCard.appendChild(fileCard);
+                });
+                
+
 
                 //create and prepare comment-box and cancel/save/edit buttons
                 /*const fileForm = document.createElement('form');
@@ -358,7 +491,7 @@
                 fileButtons.appendChild(fileSaveBtn);*/
 
                 //add everything to li
-                comCard.appendChild(fileCard);
+                //comCard.appendChild(fileCard);
                 //li.appendChild(fileForm);
                 //li.appendChild(fileButtons);
 
@@ -504,22 +637,23 @@
     }
 
     function saveOtherComment(editB, cancelB, saveB, textB, card, inp, t, newc, i, li) {
-        vscode.postMessage({ type: 'saveOtherComment', val: { type: t, newCom: newc, index: i } });
+        //vscode.postMessage({ type: 'saveOtherComment', val: { type: t, newCom: newc, index: i } });
+        vscode.postMessage({ type: 'saveComment', value: newc, index: i });
         var del;
         var slabel;
-        if(t==="script"){
+        if (t === "script") {
             del = document.querySelector('#del1');
             slabel = document.querySelector('#scripts-label');
         }
-        else if(t==="file"){
-            del = document.querySelector('#del2');
-            slabel = document.querySelector('#files-label');
+        else if (t === "file") {
+            del = document.querySelector('#delfile');
+            //slabel = document.querySelector('#files-label');
         }
-        else if (t === "dependency"){
+        else if (t === "dependency") {
             del = document.querySelector('#del3');
             slabel = document.querySelector('#dependencies-label');
         }
-        
+
         textB.textContent = comment;
         cancelB.className = "ghost";
         saveB.className = "ghost";
@@ -531,9 +665,9 @@
             del.removeChild(li);
             li.remove();
         }
-        if(!del.hasChildNodes()){
+        /*if (!del.hasChildNodes()) {
             slabel.className = "ghost";
-        }
+        }*/
         inp.className = "ghost";
     }
 }());

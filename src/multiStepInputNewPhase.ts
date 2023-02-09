@@ -33,7 +33,7 @@ export async function newCodePhase(context: ExtensionContext) {
 			step: 1,
 			totalSteps: 1,
 			value: state.phase || '',
-			prompt: 'Choose Snapshot title (optional)',
+			prompt: 'Choose Snapshot title',
 			validate: validatePhaseTitle,
 			shouldResume: shouldResume
 		});

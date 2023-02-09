@@ -126,11 +126,10 @@ function activate(context) {
     });
     //Save changes to a comment
     vscode.commands.registerCommand('extension.saveChanges', (type) => {
-        context.globalState.update("snaps", snaps);
-        if (type === "snapshot") {
-            vscode.commands.executeCommand("dear-diary.refreshSnapshots");
-        }
-        else if (type === "dependency") {
+        //context.globalState.update("snaps", snaps);
+        context.globalState.update("diary", diary);
+        vscode.commands.executeCommand("dear-diary.refreshSnapshots");
+        if (type === "dependency") {
             vscode.commands.executeCommand("dear-diary.refreshDependencies");
         }
         else if (type === "script") {
@@ -588,7 +587,7 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
         const lastItem = pathsAndFilesArray.indexOf(el) === pathsAndFilesArray.length - 1;
         const isDirectory = fs.statSync(fullPath).isDirectory();
         const isLastDirInTree = isDirectory && lastItem;
-        let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, "", [], "");
+        let fsInst = new Snapshot_1.FSInstance(elText, isDirectory ? "dir" : "file", false, "", [], []);
         if (isDirectory) {
             if (fullPath.replace(/^.*[\\\/]/, '') === "node_modules" || fullPath.replace(/^.*[\\\/]/, '').match(new RegExp(/\..*/))) {
                 return;
@@ -713,7 +712,7 @@ class CommentViewProvider {
         this.snap = new Snapshot_1.Snapshot("", "", "Select a snapshot to visualize and edit a comment", [], [], [], "", 0);
         this.dep = new Snapshot_1.Resource("", "", "", "");
         this.script = new Snapshot_1.Resource("", "", "", "");
-        this.fi = new Snapshot_1.FSInstance("", "", false, "", [], "");
+        this.fi = new Snapshot_1.FSInstance("", "", false, "", [], []);
         this.type = "";
         this.dTitle = "";
         this.otherComs = new Snapshot_1.ResCommented([], [], []);
@@ -763,70 +762,83 @@ class CommentViewProvider {
                             vscode.commands.executeCommand("extension.saveChanges", this.type);
                         }
                         else if (this.type === "file") {
-                            if (this.fi.comment === "" && data.value !== "") {
+                            let ind = data.index;
+                            if (this.fi.comment[ind] === "" && data.value !== "") {
                                 this.snap.nComments++;
                             }
-                            else if (this.fi.comment !== "" && data.value === "") {
+                            else if (this.fi.comment[ind] !== "" && data.value === "") {
                                 this.snap.nComments--;
                             }
-                            this.fi.comment = data.value;
+                            if (data.value === "") {
+                                this.fi.comment.splice(ind, 1);
+                            }
+                            else {
+                                this.fi.comment[ind] = data.value;
+                            }
                             vscode.commands.executeCommand("extension.saveChanges", this.type);
+                            this.setFileComment(this.fi, this.snap, "Diary");
                         }
-                        console.log(this.dTitle + "/" + this.snap.title + ": " + this.snap.nComments);
                         break;
                     }
                     ;
-                case 'saveOtherComment':
+                case 'saveNewComment':
+                    {
+                        this.snap.nComments++;
+                        this.fi.comment.push(data.com);
+                        vscode.commands.executeCommand("extension.saveChanges", this.type);
+                        this.setFileComment(this.fi, this.snap, "Diary");
+                    }
+                    ;
+                /*case 'saveOtherComment':
                     {
                         let val = data.val;
-                        if (val.type === 'script') {
-                            if (this.otherComs.scripts[val.index].comment === "" && val.newCom !== "") {
+                        if(val.type === 'script'){
+                            if(this.otherComs.scripts[val.index].comment === "" && val.newCom !==""){
                                 this.snap.nComments++;
                             }
-                            else if (this.otherComs.scripts[val.index].comment !== "" && val.newCom === "") {
+                            else if(this.otherComs.scripts[val.index].comment !== "" && val.newCom === ""){
                                 this.snap.nComments--;
                             }
                             this.otherComs.scripts[val.index].comment = val.newCom;
-                            if (val.newCom === "") {
+                            if(val.newCom===""){
                                 this.otherComs.scripts.splice(val.index, 1);
                             }
                             vscode.commands.executeCommand("extension.saveChanges", "script");
                             this.setComment(this.snap, this.dTitle, this.otherComs);
                         }
-                        else if (val.type === 'file') {
-                            if (this.otherComs.files[val.index].comment === "" && val.newCom !== "") {
+                        else if(val.type === 'file'){
+                            if(this.otherComs.files[val.index].comment === "" && val.newCom !==""){
                                 this.snap.nComments++;
                             }
-                            else if (this.otherComs.files[val.index].comment !== "" && val.newCom === "") {
+                            else if(this.otherComs.files[val.index].comment !== "" && val.newCom === ""){
                                 this.snap.nComments--;
                             }
                             this.otherComs.files[val.index].comment = val.newCom;
-                            if (val.newCom === "") {
+                            if(val.newCom===""){
                                 this.otherComs.files.splice(val.index, 1);
                                 this.snap.nComments--;
                             }
                             vscode.commands.executeCommand("extension.saveChanges", "file");
                             this.setComment(this.snap, this.dTitle, this.otherComs);
                         }
-                        else if (val.type === 'dependency') {
-                            if (this.otherComs.dependencies[val.index].comment === "" && val.newCom !== "") {
+                        else if(val.type === 'dependency'){
+                            if(this.otherComs.dependencies[val.index].comment === "" && val.newCom !==""){
                                 this.snap.nComments++;
                             }
-                            else if (this.otherComs.dependencies[val.index].comment !== "" && val.newCom === "") {
+                            else if(this.otherComs.dependencies[val.index].comment !== "" && val.newCom === ""){
                                 this.snap.nComments--;
                             }
                             this.otherComs.dependencies[val.index].comment = val.newCom;
-                            if (val.newCom === "") {
+                            if(val.newCom===""){
                                 this.otherComs.dependencies.splice(val.index, 1);
                                 this.snap.nComments--;
                             }
                             vscode.commands.executeCommand("extension.saveChanges", "dependency");
                             this.setComment(this.snap, this.dTitle, this.otherComs);
                         }
-                        console.log(this.dTitle + "/" + this.snap.title + ": " + this.snap.nComments);
+                        console.log(this.dTitle+"/"+this.snap.title+": "+this.snap.nComments);
                         break;
-                    }
-                    ;
+                    };*/
             }
         });
     }
@@ -858,7 +870,7 @@ class CommentViewProvider {
             if (f2.type === "folder") {
                 this.searchFiles(f2.subInstances, s2);
             }
-            else if (f2.comment !== "") {
+            else if (f2.comment.length > 0) {
                 s2.files.push(f2);
             }
         }
@@ -931,10 +943,16 @@ class CommentViewProvider {
 					<textarea id="input-area" class="ghost"></textarea>
 				</form>
 
-				<div class="buttons-row">				
+				<div id="bRow" class="buttons-row">
 					<button id="cancelbtn" class="ghost">Cancel</button>
 					<button id="editbtn" class="ghost">Edit</button>
 					<button id="savebtn" class="ghost">Save</button>
+				</div>
+
+				<div id="file-comments">
+					<ul id="file-com-list">
+						<div id="delfile"></div>
+					</ul>
 				</div>
 
 				<div id="lists">
