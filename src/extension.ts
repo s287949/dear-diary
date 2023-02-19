@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from "child_process";
 import { DiarySnapshotsProvider } from './diarySnapshotsProvider';
+const filesys = require("fs");
 
 
 let terminalData = {};
@@ -524,7 +525,7 @@ export function activate(context: vscode.ExtensionContext) {
 							else {
 								//get dependencies
 								let deps: Resource[] = [];
-								if (ext === ".py" && code!=="") {
+								if (ext === ".py" && code !== "") {
 									let ds = code?.match(/(from .+ )?import .+/g);
 									ds?.forEach(function (d, i) {
 										deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
@@ -675,6 +676,14 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 			}
 		}
 		else {
+			filesys.readFile(fullPath, (err: any, data: any) => {
+				let eg;
+				if (err) throw err;
+				let ds = data.toString().match(/(from .+ )?import .+/g);
+				ds?.forEach(function (d:string, i:number) {
+					eg.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+				});
+			});
 			if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
 				packagePath.push(fullPath);
 			}
