@@ -447,9 +447,10 @@ function activate(context) {
                         let type = 3;
                         let packagePath = [];
                         const editor = vscode.window.activeTextEditor;
-                        let code;
+                        let code = "";
                         if (editor) {
                             const document = editor.document;
+                            code = document.getText();
                             if (type === 1) {
                                 const selection = editor.selection;
                                 code = document.getText(selection);
@@ -477,12 +478,26 @@ function activate(context) {
                             else {
                                 //get dependencies
                                 let deps = [];
-                                let pa = packagePath[0].replace(/\\package\.json/, '');
-                                if (packagePath.length > 0) {
-                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(pa);
+                                if (ext === ".py" && code !== "") {
+                                    let ds = code?.match(/(from .+ )?import .+/g);
+                                    ds?.forEach(function (d, i) {
+                                        deps.push(new Snapshot_1.Resource(d.split(" ")[1], "", "dependency", ""));
+                                        /*if(d.includes("from")){
+                                            deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+                                        }
+                                        else {
+                                            deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+                                        }*/
+                                    });
                                 }
                                 else {
-                                    deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                                    let pa = packagePath[0].replace(/\\package\.json/, '');
+                                    if (packagePath.length > 0) {
+                                        deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(pa);
+                                    }
+                                    else {
+                                        deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(rootPath);
+                                    }
                                 }
                                 //get command line scripts
                                 let scripts = [];

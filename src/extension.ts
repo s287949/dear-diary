@@ -490,9 +490,10 @@ export function activate(context: vscode.ExtensionContext) {
 						let packagePath: Array<string> = [];
 
 						const editor = vscode.window.activeTextEditor;
-						let code;
+						let code = "";
 						if (editor) {
 							const document = editor.document;
+							code = document.getText();
 							if (type === 1) {
 								const selection = editor.selection;
 								code = document.getText(selection);
@@ -523,12 +524,26 @@ export function activate(context: vscode.ExtensionContext) {
 							else {
 								//get dependencies
 								let deps: Resource[] = [];
-								let pa = packagePath[0].replace(/\\package\.json/, '');
-								if (packagePath.length > 0) {
-									deps = getDepsInPackageJson(pa);
+								if (ext === ".py" && code!=="") {
+									let ds = code?.match(/(from .+ )?import .+/g);
+									ds?.forEach(function (d, i) {
+										deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+										/*if(d.includes("from")){
+											deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+										}
+										else {
+											deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+										}*/
+									});
 								}
 								else {
-									deps = getDepsInPackageJson(rootPath);
+									let pa = packagePath[0].replace(/\\package\.json/, '');
+									if (packagePath.length > 0) {
+										deps = getDepsInPackageJson(pa);
+									}
+									else {
+										deps = getDepsInPackageJson(rootPath);
+									}
 								}
 
 								//get command line scripts
@@ -866,13 +881,13 @@ class CommentViewProvider implements vscode.WebviewViewProvider {
 								this.snap.nComments--;
 							}
 
-							if(data.value === ""){
+							if (data.value === "") {
 								this.fi.comment.splice(ind, 1);
 							}
 							else {
 								this.fi.comment[ind] = data.value;
 							}
-							
+
 							vscode.commands.executeCommand("extension.saveChanges", this.type);
 							this.setFileComment(this.fi, this.snap, "Diary");
 						}
