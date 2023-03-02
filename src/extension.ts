@@ -621,6 +621,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 function generateFileTree(selectedRootPath: string, level: number, parentDirIsLast = false, originalFilePath: string, type: number, packagePath: Array<string>, eg: Resource[]) {
 	let output: FSInstance[] = [];
+	let checkDupplicate: string[] = [];
 
 	// return if path to target is not valid
 	if (!fs.existsSync(selectedRootPath)) {
@@ -671,7 +672,11 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 				let text = document.getText();
 				let ds = text.match(/(from .+ )?import .+/g);
 				ds?.forEach(function (d:string, i:number) {
-					eg.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+					let newDep = d.split(" ")[1];
+					if(!checkDupplicate.includes(newDep)){
+						eg.push(new Resource(newDep, "", "dependency", ""));
+						checkDupplicate.push(newDep);
+					}
 				});
 			});
 			if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {

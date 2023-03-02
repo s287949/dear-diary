@@ -567,6 +567,7 @@ function activate(context) {
 exports.activate = activate;
 function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type, packagePath, eg) {
     let output = [];
+    let checkDupplicate = [];
     // return if path to target is not valid
     if (!fs.existsSync(selectedRootPath)) {
         return [];
@@ -611,7 +612,11 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
                 let text = document.getText();
                 let ds = text.match(/(from .+ )?import .+/g);
                 ds?.forEach(function (d, i) {
-                    eg.push(new Snapshot_1.Resource(d.split(" ")[1], "", "dependency", ""));
+                    let newDep = d.split(" ")[1];
+                    if (!checkDupplicate.includes(newDep)) {
+                        eg.push(new Snapshot_1.Resource(newDep, "", "dependency", ""));
+                        checkDupplicate.push(newDep);
+                    }
                 });
             });
             if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
