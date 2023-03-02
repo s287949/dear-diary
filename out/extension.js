@@ -466,8 +466,9 @@ function activate(context) {
                             let fileName = document.fileName;
                             let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)[0];
                             let ext = fileext ? fileext : "txt";
+                            let deps = [];
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath, []);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath, deps);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -478,20 +479,7 @@ function activate(context) {
                             }
                             else {
                                 //get dependencies
-                                let deps = [];
-                                if (ext === ".py" && code !== "") {
-                                    let ds = code?.match(/(from .+ )?import .+/g);
-                                    ds?.forEach(function (d, i) {
-                                        deps.push(new Snapshot_1.Resource(d.split(" ")[1], "", "dependency", ""));
-                                        /*if(d.includes("from")){
-                                            deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
-                                        }
-                                        else {
-                                            deps.push(new Resource(d.split(" ")[1], "", "dependency", ""));
-                                        }*/
-                                    });
-                                }
-                                else {
+                                if (ext !== ".py" && code !== "") {
                                     let pa = packagePath[0].replace(/\\package\.json/, '');
                                     if (packagePath.length > 0) {
                                         deps = (0, dependenciesCatcher_1.getDepsInPackageJson)(pa);
@@ -616,6 +604,9 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
             }
         }
         else {
+            if (fullPath.replace(/^.*[\\\/]/, '') === "node_modules" || fullPath.replace(/^.*[\\\/]/, '').match(new RegExp(/^[.]/))) {
+                return;
+            }
             vscode.workspace.openTextDocument(fullPath).then((document) => {
                 let text = document.getText();
                 let ds = text.match(/(from .+ )?import .+/g);
@@ -623,13 +614,6 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
                     eg.push(new Snapshot_1.Resource(d.split(" ")[1], "", "dependency", ""));
                 });
             });
-            /*filesys.readFile(fullPath, (err: any, data: any) => {
-                if (err) throw err;
-                let ds = data.toString().match(/(from .+ )?import .+/g);
-                ds?.forEach(function (d:string, i:number) {
-                    eg.push(new Resource(d.split(" ")[1], "", "dependency", ""));
-                });
-            });*/
             if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
                 packagePath.push(fullPath);
             }
