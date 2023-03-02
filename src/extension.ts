@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from "child_process";
 import { DiarySnapshotsProvider } from './diarySnapshotsProvider';
-const filesys = require("fs");
+//const filesys = require("fs");
 
 
 let terminalData = {};
@@ -246,7 +246,7 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
 					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
 						const qis = await newCodeSnapshot(context);
-						let fileTree = [];
+						let fileTree:FSInstance[] = [];
 						let packagePath: Array<string> = [];
 
 						const editor = vscode.window.activeTextEditor;
@@ -270,7 +270,7 @@ export function activate(context: vscode.ExtensionContext) {
 							let ext = fileext ? fileext : "txt";
 
 							if (rootPath) {
-								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
+								//fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -375,7 +375,7 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
 					vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(async () => {
 						const qis = await newCodePhase(context);
-						let fileTree = [];
+						let fileTree:FSInstance[] = [];
 						let type = 0;
 						let packagePath: Array<string> = [];
 
@@ -413,7 +413,7 @@ export function activate(context: vscode.ExtensionContext) {
 							let ext = fileext ? fileext : "txt";
 
 							if (rootPath) {
-								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
+								//fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -512,7 +512,7 @@ export function activate(context: vscode.ExtensionContext) {
 							let ext = fileext ? fileext : "txt";
 
 							if (rootPath) {
-								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
+								fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath, []);
 							}
 							else {
 								vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -631,7 +631,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 }
 
-function generateFileTree(selectedRootPath: string, level: number, parentDirIsLast = false, originalFilePath: string, type: number, packagePath: Array<string>) {
+function generateFileTree(selectedRootPath: string, level: number, parentDirIsLast = false, originalFilePath: string, type: number, packagePath: Array<string>, eg: Resource[]) {
 	let output: FSInstance[] = [];
 
 	// return if path to target is not valid
@@ -672,18 +672,24 @@ function generateFileTree(selectedRootPath: string, level: number, parentDirIsLa
 				fsInst.fileSnapshoted = true;
 			}
 			if (!fsInst.name.startsWith(".", 0)) {
-				fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type, packagePath);
+				fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type, packagePath, eg);
 			}
 		}
 		else {
-			filesys.readFile(fullPath, (err: any, data: any) => {
-				let eg;
+			vscode.workspace.openTextDocument(fullPath).then((document) => {
+				let text = document.getText();
+				let ds = text.match(/(from .+ )?import .+/g);
+				ds?.forEach(function (d:string, i:number) {
+					eg.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+				});
+			});
+			/*filesys.readFile(fullPath, (err: any, data: any) => {			
 				if (err) throw err;
 				let ds = data.toString().match(/(from .+ )?import .+/g);
 				ds?.forEach(function (d:string, i:number) {
 					eg.push(new Resource(d.split(" ")[1], "", "dependency", ""));
 				});
-			});
+			});*/
 			if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
 				packagePath.push(fullPath);
 			}
@@ -1133,7 +1139,6 @@ const execShell = (cmd: string) =>
 			return resolve(out);
 		});
 	});
-
 
 // this method is called when your extension is deactivated
 export function deactivate() {

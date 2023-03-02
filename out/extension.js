@@ -16,6 +16,7 @@ const fs = require("fs");
 const path = require("path");
 const cp = require("child_process");
 const diarySnapshotsProvider_1 = require("./diarySnapshotsProvider");
+//const filesys = require("fs");
 let terminalData = {};
 let ft = true;
 // this method is called when your extension is activated
@@ -246,7 +247,7 @@ function activate(context) {
                             let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)[0];
                             let ext = fileext ? fileext : "txt";
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
+                                //fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -377,7 +378,7 @@ function activate(context) {
                             let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)[0];
                             let ext = fileext ? fileext : "txt";
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
+                                //fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -466,7 +467,7 @@ function activate(context) {
                             let fileext = fileName.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/gmi)[0];
                             let ext = fileext ? fileext : "txt";
                             if (rootPath) {
-                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath);
+                                fileTree = generateFileTree(rootPath, 0, false, fileName, type, packagePath, []);
                             }
                             else {
                                 vscode.window.showErrorMessage("Error: File tree could not be captured");
@@ -576,7 +577,7 @@ function activate(context) {
     });
 }
 exports.activate = activate;
-function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type, packagePath) {
+function generateFileTree(selectedRootPath, level, parentDirIsLast = false, originalFilePath, type, packagePath, eg) {
     let output = [];
     // return if path to target is not valid
     if (!fs.existsSync(selectedRootPath)) {
@@ -611,10 +612,24 @@ function generateFileTree(selectedRootPath, level, parentDirIsLast = false, orig
                 fsInst.fileSnapshoted = true;
             }
             if (!fsInst.name.startsWith(".", 0)) {
-                fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type, packagePath);
+                fsInst.subInstances = generateFileTree(fullPath, level + 1, isLastDirInTree, originalFilePath, type, packagePath, eg);
             }
         }
         else {
+            vscode.workspace.openTextDocument(fullPath).then((document) => {
+                let text = document.getText();
+                let ds = text.match(/(from .+ )?import .+/g);
+                ds?.forEach(function (d, i) {
+                    eg.push(new Snapshot_1.Resource(d.split(" ")[1], "", "dependency", ""));
+                });
+            });
+            /*filesys.readFile(fullPath, (err: any, data: any) => {
+                if (err) throw err;
+                let ds = data.toString().match(/(from .+ )?import .+/g);
+                ds?.forEach(function (d:string, i:number) {
+                    eg.push(new Resource(d.split(" ")[1], "", "dependency", ""));
+                });
+            });*/
             if (fullPath.replace(/^.*[\\\/]/, '') === "package.json") {
                 packagePath.push(fullPath);
             }
