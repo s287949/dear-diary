@@ -214,7 +214,7 @@ function activate(context) {
         output = await execShell(command);
         command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
         output = await execShell(command);
-        //vscode.window.showInformationMessage(output);
+        vscode.window.showInformationMessage(output);
         if (output !== "error") {
             ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
         }
