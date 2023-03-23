@@ -114,7 +114,7 @@
 				},
 				{
 					"command": "dear-diary.delete-everything",
-					"when": "view == snapshots",
+					"when": "view == boh",
 					"group": "navigation"
 				}
 			],

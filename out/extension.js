@@ -214,8 +214,10 @@ function activate(context) {
         output = await execShell(command);
         command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
         output = await execShell(command);
-        vscode.window.showInformationMessage(output);
-        if (output !== "error") {
+        if (output.includes("nothing to commit")) {
+            vscode.window.showErrorMessage("No changes since last snapshot: aborting");
+        }
+        else if (output !== "error") {
             ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
         }
     });
@@ -1018,4 +1020,20 @@ function deactivate() {
     vscode.commands.executeCommand("dear-diary.closeProjectSnapshot");
 }
 exports.deactivate = deactivate;
+/*
+,
+                {
+                    "command": "dear-diary.delete-everything",
+                    "when": "view == snapshots",
+                    "group": "navigation"
+                }
+
+
+contributes: commands:
+{
+                "command": "dear-diary.delete-everything",
+                "title": "Delete",
+                "icon": "$(close)"
+            },
+*/ 
 //# sourceMappingURL=extension.js.map
