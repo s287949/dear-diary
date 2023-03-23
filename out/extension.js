@@ -215,7 +215,7 @@ function activate(context) {
         command = "cd " + rootPath + " && git commit -m \"" + snapNo + "\"";
         output = await execShell(command);
         if (output.includes("nothing to commit")) {
-            vscode.window.showErrorMessage("No changes since last snapshot: aborting");
+            vscode.window.showInformationMessage("No changes since last snapshot: aborting");
         }
         else if (output !== "error") {
             ns.code = output.match(/.{7}\]/)?.toString().match(/.{7}/)?.toString();
@@ -1009,7 +1009,7 @@ function getNonce() {
 }
 const execShell = (cmd) => new Promise((resolve, reject) => {
     cp.exec(cmd, (err, out) => {
-        if (err) {
+        if (err && out === "") {
             return resolve(err.toString());
         }
         return resolve(out);
