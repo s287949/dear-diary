@@ -66,12 +66,12 @@ export class ScriptItem extends vscode.TreeItem {
 			this.description="commented";
 		}
 
-		var com = {
+		/*var com = {
 			command: 'dear-diary.comment',
 			title: '',
 			arguments: [this]
-		};
-		this.command = com;
+		};*/
+		//this.command = com;
 	}
 
 	iconPath = {
