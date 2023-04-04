@@ -51,7 +51,7 @@
 				{
 					"id": "dear-diary",
 					"title": "Dear Diary",
-					"icon": "$(notebook)"
+					"icon": "resources/dark/diary.svg"
 				}
 			],
 			"panel": [
